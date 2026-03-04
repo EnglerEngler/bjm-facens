@@ -29,7 +29,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {session?.user.role === "admin" && <Link href="/admin/audit">Auditoria</Link>}
             {session && (
               <>
-                <span className="muted">{session.user.name}</span>
+                <span className="muted" aria-label="Usuário logado">
+                  {session.user.name}
+                </span>
                 <button type="button" onClick={signOut}>
                   Sair
                 </button>
