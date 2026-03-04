@@ -9,6 +9,7 @@ Arquivo `.env.local`:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3333
+NEXT_PUBLIC_DEFAULT_PATIENT_ID=patient_4
 ```
 
 ## Executar em desenvolvimento

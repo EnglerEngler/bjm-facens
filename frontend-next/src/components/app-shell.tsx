@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { roleDefaultPath } from "@/lib/role-utils";
 import { useAuth } from "@/providers/auth-provider";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -19,7 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       <header className="card" style={{ marginBottom: 0, borderRadius: 0 }}>
         <div className="between" style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <Link href={session ? "/" : "/login"} aria-label="BJM">
+          <Link href={session ? roleDefaultPath(session.user.role) : "/login"} aria-label="BJM">
             <Image src="/logo-bjm.jpg" alt="BJM" width={120} height={66} priority />
           </Link>
           <div className="row">
