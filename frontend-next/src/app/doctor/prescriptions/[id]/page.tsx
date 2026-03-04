@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AlertBadge } from "@/components/alert-badge";
+import { AlertDecisionForm } from "@/components/alert-decision-form";
 import { apiRequest } from "@/lib/api-client";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
 import type { Prescription, RiskAlert } from "@/types/domain";
@@ -42,12 +43,14 @@ export default function PrescriptionDetailsPage() {
     void loadData();
   }, [loadData]);
 
-  const decide = async (alertId: string, action: "accepted" | "reviewed" | "ignored") => {
-    const justification = window.prompt("Justificativa (obrigatória para alerta crítico):") ?? undefined;
+  const decide = async (
+    alertId: string,
+    payload: { action: "accepted" | "reviewed" | "ignored"; justification?: string },
+  ) => {
     try {
       await apiRequest(`/prescriptions/alerts/${alertId}/decision`, {
         method: "POST",
-        body: JSON.stringify({ action, justification }),
+        body: JSON.stringify(payload),
       });
       setStatusMessage("Decisão registrada com sucesso.");
       await loadData();
@@ -90,11 +93,7 @@ export default function PrescriptionDetailsPage() {
             </div>
             <p>{alert.message}</p>
             <p className="muted">Status: {alert.status}</p>
-            <div className="row">
-              <button type="button" onClick={() => void decide(alert.id, "accepted")}>Aceitar</button>
-              <button type="button" onClick={() => void decide(alert.id, "reviewed")}>Revisar</button>
-              <button type="button" onClick={() => void decide(alert.id, "ignored")}>Ignorar</button>
-            </div>
+            <AlertDecisionForm alert={alert} onSubmit={(payload) => decide(alert.id, payload)} />
           </article>
         ))}
         {statusMessage && <p className="muted">{statusMessage}</p>}
