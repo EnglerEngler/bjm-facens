@@ -434,6 +434,19 @@ Criar um sistema com:
 - [ ] Aumentar cobertura de testes unitários e de integração dos endpoints críticos.
 - [ ] Ajustar autorização de leitura de prescrições para perfil `patient` (ou expor endpoint dedicado `/patients/me/prescriptions`).
 
+### 17.7 Passo a passo técnico (execução real)
+- [x] Passo 01: Subir MySQL em Docker e validar conexão (`/db/health`).
+- [x] Passo 02: Configurar `sequelize-cli` (`.sequelizerc`, config e migrations CLI).
+- [x] Passo 03: Executar migrations e validar criação de tabelas.
+- [x] Passo 04: Criar models Sequelize para tabelas centrais de domínio.
+- [x] Passo 05: Migrar serviço de autenticação para MySQL/Sequelize.
+- [x] Passo 06: Migrar rotas de pacientes/prontuário para MySQL/Sequelize.
+- [x] Passo 07: Migrar análise clínica (alertas + anamnese) para MySQL/Sequelize.
+- [x] Passo 08: Migrar rotas de prescrição/decisão para MySQL/Sequelize.
+- [x] Passo 09: Migrar auditoria para persistência real no banco.
+- [~] Passo 10: Remover dependência residual de `domain/store` nos testes legados.
+- [ ] Passo 11: Expandir testes de integração para validar fluxos 100% banco.
+
 ---
 
 ## 18. Quadro de Rastreabilidade (preencher conforme implementação)
