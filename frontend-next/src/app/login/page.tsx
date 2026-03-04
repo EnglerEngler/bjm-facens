@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { LoginForm } from "@/components/login-form";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
+import Link from "next/link";
 
 export default function LoginPage() {
   useAuthRedirect();
@@ -19,9 +20,9 @@ export default function LoginPage() {
             Fluxo visual inspirado no seu modelo, com dados clínicos centralizados, rastreabilidade e suporte para
             decisões em tempo real.
           </p>
-          <a href="#painel-login" className="login-cta">
+          <Link href="/como-funciona" className="login-cta">
             Como funciona
-          </a>
+          </Link>
         </aside>
         <section className="login-panel" id="painel-login">
           <LoginForm />
