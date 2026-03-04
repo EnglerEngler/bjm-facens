@@ -52,7 +52,7 @@ export function LoginForm() {
   };
 
   return (
-    <div className="card" style={{ maxWidth: 520, margin: "24px auto" }}>
+    <div className="card login-form-card">
       <h2>{mode === "login" ? "Entrar" : "Criar conta"}</h2>
       <form onSubmit={submit}>
         {mode === "register" && (
