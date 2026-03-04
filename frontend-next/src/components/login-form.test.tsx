@@ -14,6 +14,15 @@ jest.mock("@/providers/auth-provider", () => ({
 }));
 
 describe("LoginForm", () => {
+  it("mostra mensagens legíveis ao enviar vazio", async () => {
+    render(<LoginForm />);
+
+    await userEvent.click(screen.getByRole("button", { name: /entrar/i }));
+
+    expect(await screen.findByText(/e-mail inválido/i)).toBeInTheDocument();
+    expect(screen.getByText(/senha deve ter ao menos 6 caracteres/i)).toBeInTheDocument();
+  });
+
   it("valida email no login", async () => {
     render(<LoginForm />);
 

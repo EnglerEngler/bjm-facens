@@ -1,4 +1,4 @@
-export type UserRole = "doctor" | "patient" | "admin";
+export type UserRole = "doctor" | "patient" | "admin" | "clinic_admin";
 
 export type AlertSeverity = "critical" | "high" | "medium" | "low";
 
@@ -7,6 +7,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  clinicId?: string;
   createdAt: string;
 }
 
@@ -24,7 +25,7 @@ export interface ApiErrorPayload {
 export interface Patient {
   id: string;
   userId: string;
-  doctorId?: string;
+  clinicId?: string;
   birthDate?: string;
   record?: MedicalRecord | null;
 }
@@ -101,4 +102,23 @@ export interface AuditLog {
   ip: string;
   metadata?: Record<string, unknown>;
   createdAt: string;
+}
+
+export interface AdminDashboardPerson {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+}
+
+export interface AdminDashboardPatient extends AdminDashboardPerson {
+  birthDate: string | null;
+}
+
+export interface AdminDashboardClinic {
+  clinicId: string;
+  clinicName: string;
+  joinCode: string;
+  doctors: AdminDashboardPerson[];
+  patients: AdminDashboardPatient[];
 }

@@ -8,13 +8,15 @@ const hasRoleAccess = (pathname: string, role: string) => {
   if (pathname.startsWith("/doctor")) return role === "doctor";
   if (pathname.startsWith("/patient")) return role === "patient";
   if (pathname.startsWith("/admin")) return role === "admin";
+  if (pathname.startsWith("/clinic")) return role === "clinic_admin";
   return true;
 };
 
 const roleHome = (role: string) => {
   if (role === "doctor") return "/doctor/dashboard";
   if (role === "patient") return "/patient/dashboard";
-  return "/admin/audit";
+  if (role === "clinic_admin") return "/clinic/dashboard";
+  return "/admin/dashboard";
 };
 
 export function middleware(request: NextRequest) {

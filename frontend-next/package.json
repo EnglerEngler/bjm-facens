@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3002 --hostname 127.0.0.1",
-    "build": "next build",
-    "start": "next start --port 3002 --hostname 127.0.0.1",
+    "dev": "node scripts/dev-with-runtime-fix.cjs",
+    "build": "next build && npm run fix:runtime-chunks",
+    "start": "npm run fix:runtime-chunks && next start --port 3002 --hostname 127.0.0.1",
     "lint": "next lint",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "fix:runtime-chunks": "node scripts/fix-next-runtime-chunks.cjs"
   },
   "dependencies": {
     "next": "15.5.3",

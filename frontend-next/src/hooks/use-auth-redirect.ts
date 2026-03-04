@@ -10,6 +10,7 @@ const rolePrefix: Record<UserRole, string> = {
   doctor: "/doctor",
   patient: "/patient",
   admin: "/admin",
+  clinic_admin: "/clinic",
 };
 
 export const useAuthRedirect = () => {

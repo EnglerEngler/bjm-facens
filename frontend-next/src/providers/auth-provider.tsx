@@ -14,6 +14,8 @@ interface AuthContextValue {
     email: string;
     password: string;
     role: UserRole;
+    clinicName?: string;
+    clinicJoinCode?: string;
   }) => Promise<void>;
   logout: () => void;
 }
@@ -41,7 +43,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return result;
   };
 
-  const register = async (payload: { name: string; email: string; password: string; role: UserRole }) => {
+  const register = async (payload: {
+    name: string;
+    email: string;
+    password: string;
+    role: UserRole;
+    clinicName?: string;
+    clinicJoinCode?: string;
+  }) => {
     await apiRequest("/auth/register", {
       method: "POST",
       body: JSON.stringify(payload),
