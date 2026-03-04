@@ -407,17 +407,15 @@ Criar um sistema com:
 - [x] UI-02/UI-03/UI-04/UI-05 implementadas (dashboard médico, prontuário, prescrição com alertas e anamnese IA).
 - [x] UI-06/UI-07/UI-08 implementadas (dashboard paciente, perfil/histórico, auditoria admin).
 - [x] Dashboard do paciente ajustado para integração estrita com API real (sem mocks), com tentativa de `/patients/me/prescriptions` e fallback para `/prescriptions`.
+- [x] Backend expôs endpoint dedicado para paciente `/patients/me/prescriptions` (sem fallback).
 - [x] Componentes reutilizáveis implementados: `AlertBadge`, `PrescriptionForm`, `AnamnesisCard`, `AuditTable`.
 - [x] Testes FE críticos implementados e aprovados (`login-form.test.tsx`, `prescription-form.test.tsx`, `alerts-list.test.tsx`).
 - [x] Ambiente frontend configurado com `.env.example` e `.env.local` em `frontend-next` (`NEXT_PUBLIC_API_BASE_URL=http://localhost:3333`).
 
 ### 17.3 Itens em andamento
 - [~] Hardening de autenticação (envio real de recuperação por e-mail e revogação robusta de sessão).
-- [~] Persistência ainda em memória (migração para MySQL via Sequelize em andamento).
-- [~] Testes unitários iniciais criados para auth e análise clínica.
-- [~] Aplicar migrations/seeds em ambiente MySQL e conectar API ao banco.
-- [~] Expandir suíte de integração para fluxos de prescrição, alertas e auditoria.
-- [~] Ajuste de contrato backend pendente para experiência plena do paciente: rota de prescrições para perfil `patient` (atualmente `GET /prescriptions` retorna 403 para paciente).
+- [~] Consolidar suíte de testes de integração por rota com execução local no ambiente do desenvolvedor.
+- [~] Cobrir cenários negativos adicionais (validação de payload e autorização detalhada por recurso).
 
 ### 17.4 Itens bloqueados
 - [ ]
@@ -430,9 +428,9 @@ Criar um sistema com:
 - [x] Auditoria mínima obrigatória em ações sensíveis.
 
 ### 17.6 Próximos passos
-- [ ] Conectar definitivamente as rotas de negócio ao MySQL via Sequelize (substituindo store em memória).
-- [ ] Aumentar cobertura de testes unitários e de integração dos endpoints críticos.
-- [ ] Ajustar autorização de leitura de prescrições para perfil `patient` (ou expor endpoint dedicado `/patients/me/prescriptions`).
+- [x] Conectar definitivamente as rotas de negócio ao MySQL via Sequelize (substituindo store em memória).
+- [~] Aumentar cobertura de testes unitários e de integração dos endpoints críticos.
+- [x] Ajustar autorização de leitura de prescrições para perfil `patient` (endpoint dedicado `/patients/me/prescriptions`).
 
 ### 17.7 Passo a passo técnico (execução real)
 - [x] Passo 01: Subir MySQL em Docker e validar conexão (`/db/health`).
@@ -444,15 +442,16 @@ Criar um sistema com:
 - [x] Passo 07: Migrar análise clínica (alertas + anamnese) para MySQL/Sequelize.
 - [x] Passo 08: Migrar rotas de prescrição/decisão para MySQL/Sequelize.
 - [x] Passo 09: Migrar auditoria para persistência real no banco.
-- [~] Passo 10: Remover dependência residual de `domain/store` nos testes legados.
-- [ ] Passo 11: Expandir testes de integração para validar fluxos 100% banco.
+- [x] Passo 10: Remover dependência residual de `domain/store` no runtime e limpar legado.
+- [x] Passo 11: Organização KISS do backend (trilha única `sequelize-cli`, remoção de SQL legado duplicado e docs simplificadas).
+- [~] Passo 12: Expandir testes de integração para validar fluxos 100% banco (suíte por rota criada; execução local pendente).
 
 ---
 
 ## 18. Quadro de Rastreabilidade (preencher conforme implementação)
 | ID | Requisito | Implementado em | Status | Evidência (PR/Teste) |
 |---|---|---|---|---|
-| RF-001 | Cadastro com perfil | `backend/src/routes/auth-routes.ts` | [x] | Fluxo implementado em memória |
+| RF-001 | Cadastro com perfil | `backend/src/routes/auth-routes.ts` | [x] | Fluxo persistido em MySQL via Sequelize |
 | RF-020 | Prescrição assistida | `backend/src/routes/prescription-routes.ts` | [x] | CRUD principal + análise + decisão médica |
 | RF-030 | Anamnese IA | `backend/src/routes/ai-routes.ts` | [~] | Endpoint dedicado implementado; integração com modelo externo pendente |
 | RF-043 | Auditoria de ações críticas | `backend/src/services/audit-service.ts` | [x] | Log em auth/prescrição/análise/decisão |
