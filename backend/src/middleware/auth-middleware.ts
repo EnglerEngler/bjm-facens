@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { UserModel } from "../db/models/index.js";
 import type { UserRole } from "../domain/types.js";
 import { verifyAuthToken } from "../services/auth-service.js";
 import { HttpError } from "../utils/http-error.js";
@@ -10,13 +11,18 @@ const extractToken = (authorization?: string) => {
   return token;
 };
 
-export const authMiddleware = (req: Request, _res: Response, next: NextFunction) => {
+export const authMiddleware = async (req: Request, _res: Response, next: NextFunction) => {
   const token = extractToken(req.headers.authorization);
   if (!token) return next(new HttpError("Token ausente.", 401));
 
   try {
     const decoded = verifyAuthToken(token);
-    req.auth = { userId: decoded.sub, role: decoded.role };
+    let clinicId = decoded.clinicId;
+    if (!clinicId) {
+      const user = await UserModel.findByPk(decoded.sub);
+      clinicId = user?.clinicId ?? undefined;
+    }
+    req.auth = { userId: decoded.sub, role: decoded.role, clinicId };
     return next();
   } catch {
     return next(new HttpError("Token invalido ou expirado.", 401));

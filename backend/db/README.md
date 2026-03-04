@@ -2,14 +2,13 @@
 
 Single source of truth for database evolution:
 - `sequelize-cli` migrations in `db/migrations-cli`
-- `sequelize-cli` seeders in `db/seeders`
+- `sequelize-cli` seeders in `db/seeders` (opcional, sem dados iniciais)
 
 ## Commands
 Run from `backend/`:
 
 ```bash
 npx sequelize-cli db:migrate
-npx sequelize-cli db:seed:all
 ```
 
 ## Notes

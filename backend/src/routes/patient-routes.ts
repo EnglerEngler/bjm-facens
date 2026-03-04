@@ -1,6 +1,13 @@
 import { Router } from "express";
 import { z } from "zod";
-import { MedicalRecordHistoryModel, MedicalRecordModel, PatientModel, PrescriptionModel, PrescriptionItemModel } from "../db/models/index.js";
+import {
+  MedicalRecordHistoryModel,
+  MedicalRecordModel,
+  PatientModel,
+  PrescriptionItemModel,
+  PrescriptionModel,
+  UserModel,
+} from "../db/models/index.js";
 import { authMiddleware, requireRole } from "../middleware/auth-middleware.js";
 import { addAuditLog } from "../services/audit-service.js";
 import { createId } from "../utils/id.js";
@@ -14,7 +21,6 @@ const updateRecordSchema = z.object({
 
 const createPatientSchema = z.object({
   userId: z.string().min(1),
-  doctorId: z.string().min(1).optional(),
   birthDate: z.string().min(8).optional(),
   record: z
     .object({
@@ -28,6 +34,15 @@ const createPatientSchema = z.object({
 export const patientRoutes = Router();
 
 patientRoutes.use(authMiddleware);
+
+const ensureClinicAccess = (req: Express.Request, patientClinicId?: string | null) => {
+  if (!req.auth) throw new HttpError("Nao autenticado.", 401);
+  if (req.auth.role === "admin") return;
+  if (!req.auth.clinicId) throw new HttpError("Usuario sem clinica vinculada.", 403);
+  if (!patientClinicId || patientClinicId !== req.auth.clinicId) {
+    throw new HttpError("Acesso permitido apenas para pacientes da mesma clinica.", 403);
+  }
+};
 
 patientRoutes.get("/me/prescriptions", requireRole("patient"), async (req, res, next) => {
   try {
@@ -48,9 +63,13 @@ patientRoutes.get("/me/prescriptions", requireRole("patient"), async (req, res, 
   }
 });
 
-patientRoutes.get("/", requireRole("doctor", "admin"), async (_req, res, next) => {
+patientRoutes.get("/", requireRole("doctor", "admin", "clinic_admin"), async (req, res, next) => {
   try {
-    const patients = await PatientModel.findAll();
+    if (req.auth?.role !== "admin" && !req.auth?.clinicId) {
+      throw new HttpError("Usuario sem clinica vinculada.", 403);
+    }
+    const where = req.auth?.role === "admin" ? {} : { clinicId: req.auth?.clinicId };
+    const patients = await PatientModel.findAll({ where });
     const records = await MedicalRecordModel.findAll();
 
     const items = patients.map((patient) => ({
@@ -63,24 +82,48 @@ patientRoutes.get("/", requireRole("doctor", "admin"), async (_req, res, next) =
   }
 });
 
-patientRoutes.post("/", requireRole("doctor", "admin"), async (req, res, next) => {
+patientRoutes.post("/", requireRole("doctor", "admin", "clinic_admin"), async (req, res, next) => {
   try {
     const payload = createPatientSchema.parse(req.body);
-    const patient = await PatientModel.create({
-      id: createId("patient"),
-      userId: payload.userId,
-      doctorId: payload.doctorId,
-      birthDate: payload.birthDate ? new Date(payload.birthDate) : null,
-      createdAt: new Date(),
-    });
 
-    await MedicalRecordModel.create({
-      patientId: patient.id,
-      allergies: payload.record?.allergies ?? [],
-      conditions: payload.record?.conditions ?? [],
-      currentMedications: payload.record?.currentMedications ?? [],
-      lastUpdatedAt: new Date(),
-    });
+    const patientUser = await UserModel.findByPk(payload.userId);
+    if (!patientUser || patientUser.role !== "patient") {
+      throw new HttpError("Usuario informado nao e um paciente.", 422);
+    }
+
+    const profileClinicId = patientUser.clinicId ?? null;
+    if (req.auth?.role !== "admin") {
+      if (!req.auth?.clinicId) throw new HttpError("Usuario sem clinica vinculada.", 403);
+      if (profileClinicId !== req.auth.clinicId) {
+        throw new HttpError("Paciente deve pertencer a mesma clinica.", 403);
+      }
+    }
+
+    let patient = await PatientModel.findOne({ where: { userId: payload.userId } });
+    if (!patient) {
+      patient = await PatientModel.create({
+        id: createId("patient"),
+        userId: payload.userId,
+        clinicId: profileClinicId,
+        birthDate: payload.birthDate ? new Date(payload.birthDate) : null,
+        createdAt: new Date(),
+      });
+    } else {
+      if (payload.birthDate !== undefined) patient.birthDate = new Date(payload.birthDate);
+      patient.clinicId = profileClinicId;
+      await patient.save();
+    }
+
+    const record = await MedicalRecordModel.findByPk(patient.id);
+    if (!record) {
+      await MedicalRecordModel.create({
+        patientId: patient.id,
+        allergies: payload.record?.allergies ?? [],
+        conditions: payload.record?.conditions ?? [],
+        currentMedications: payload.record?.currentMedications ?? [],
+        lastUpdatedAt: new Date(),
+      });
+    }
 
     addAuditLog({
       actorUserId: req.auth!.userId,
@@ -96,7 +139,7 @@ patientRoutes.post("/", requireRole("doctor", "admin"), async (req, res, next) =
   }
 });
 
-patientRoutes.get("/:patientId/record", requireRole("doctor", "admin", "patient"), async (req, res, next) => {
+patientRoutes.get("/:patientId/record", requireRole("doctor", "admin", "clinic_admin", "patient"), async (req, res, next) => {
   try {
     const patientId = String(req.params.patientId);
     const patient = await PatientModel.findByPk(patientId);
@@ -104,6 +147,9 @@ patientRoutes.get("/:patientId/record", requireRole("doctor", "admin", "patient"
 
     if (req.auth?.role === "patient" && req.auth.userId !== patient.userId) {
       throw new HttpError("Paciente nao pode acessar prontuario de outro usuario.", 403);
+    }
+    if (req.auth?.role !== "patient") {
+      ensureClinicAccess(req, patient.clinicId);
     }
 
     const record = await MedicalRecordModel.findByPk(patientId);
@@ -115,7 +161,7 @@ patientRoutes.get("/:patientId/record", requireRole("doctor", "admin", "patient"
   }
 });
 
-patientRoutes.patch("/:patientId/record", requireRole("doctor", "patient"), async (req, res, next) => {
+patientRoutes.patch("/:patientId/record", requireRole("doctor", "clinic_admin", "patient"), async (req, res, next) => {
   try {
     const patientId = String(req.params.patientId);
     const payload = updateRecordSchema.parse(req.body);
@@ -124,6 +170,9 @@ patientRoutes.patch("/:patientId/record", requireRole("doctor", "patient"), asyn
 
     if (req.auth?.role === "patient" && req.auth.userId !== patient.userId) {
       throw new HttpError("Paciente nao pode alterar prontuario de outro usuario.", 403);
+    }
+    if (req.auth?.role !== "patient") {
+      ensureClinicAccess(req, patient.clinicId);
     }
 
     const record = await MedicalRecordModel.findByPk(patientId);
@@ -160,9 +209,13 @@ patientRoutes.patch("/:patientId/record", requireRole("doctor", "patient"), asyn
   }
 });
 
-patientRoutes.get("/:patientId/record/history", requireRole("doctor", "admin"), async (req, res, next) => {
+patientRoutes.get("/:patientId/record/history", requireRole("doctor", "admin", "clinic_admin"), async (req, res, next) => {
   try {
     const patientId = String(req.params.patientId);
+    const patient = await PatientModel.findByPk(patientId);
+    if (!patient) throw new HttpError("Paciente nao encontrado.", 404);
+    ensureClinicAccess(req, patient.clinicId);
+
     const entries = await MedicalRecordHistoryModel.findAll({
       where: { patientId },
       order: [["createdAt", "DESC"]],

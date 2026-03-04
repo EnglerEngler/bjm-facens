@@ -3,12 +3,53 @@ import { z } from "zod";
 import { addAuditLog } from "../services/audit-service.js";
 import { loginUser, refreshAuthToken, registerUser, requestPasswordReset, resetPassword } from "../services/auth-service.js";
 
-const registerSchema = z.object({
-  name: z.string().min(3),
-  email: z.string().email(),
-  password: z.string().min(6),
-  role: z.enum(["doctor", "patient", "admin"]),
-});
+const optionalText = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().optional(),
+);
+
+const registerSchema = z
+  .object({
+    name: z.string().min(3),
+    email: z.string().email(),
+    password: z.string().min(6),
+    role: z.enum(["doctor", "patient", "admin", "clinic_admin"]),
+    clinicName: optionalText,
+    clinicJoinCode: optionalText,
+  })
+  .superRefine((payload, ctx) => {
+    if ((payload.role === "doctor" || payload.role === "patient") && !payload.clinicJoinCode?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["clinicJoinCode"],
+        message: "Codigo da clinica e obrigatorio para medico e paciente.",
+      });
+    }
+
+    if (payload.clinicJoinCode && payload.clinicJoinCode.trim().length < 6) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["clinicJoinCode"],
+        message: "Codigo da clinica deve ter ao menos 6 caracteres.",
+      });
+    }
+
+    if (payload.role === "clinic_admin" && !payload.clinicName?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["clinicName"],
+        message: "Nome da clinica e obrigatorio para admin da clinica.",
+      });
+    }
+
+    if (payload.clinicName && payload.clinicName.trim().length < 3) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["clinicName"],
+        message: "Nome da clinica deve ter ao menos 3 caracteres.",
+      });
+    }
+  });
 
 const loginSchema = z.object({
   email: z.string().email(),

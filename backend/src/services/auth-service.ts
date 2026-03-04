@@ -1,17 +1,30 @@
 import bcrypt from "bcryptjs";
+import { randomBytes } from "node:crypto";
 import jwt from "jsonwebtoken";
 import type { SignOptions } from "jsonwebtoken";
+import { UniqueConstraintError } from "sequelize";
 import { env } from "../config/env.js";
-import { PasswordResetTokenModel, RefreshSessionModel, UserModel } from "../db/models/index.js";
+import {
+  AdminModel,
+  ClinicAdminModel,
+  ClinicModel,
+  DoctorModel,
+  PasswordResetTokenModel,
+  PatientModel,
+  RefreshSessionModel,
+  UserModel,
+} from "../db/models/index.js";
+import { sequelize } from "../db/sequelize.js";
 import type { User, UserRole } from "../domain/types.js";
 import { createId } from "../utils/id.js";
 import { HttpError } from "../utils/http-error.js";
 
-const sanitizeUser = (user: Pick<User, "id" | "name" | "email" | "role" | "createdAt">) => ({
+const sanitizeUser = (user: Pick<User, "id" | "name" | "email" | "role" | "clinicId" | "createdAt">) => ({
   id: user.id,
   name: user.name,
   email: user.email,
   role: user.role,
+  clinicId: user.clinicId,
   createdAt: user.createdAt,
 });
 
@@ -20,29 +33,141 @@ export const registerUser = async (payload: {
   email: string;
   password: string;
   role: UserRole;
+  clinicName?: string;
+  clinicJoinCode?: string;
 }) => {
+  let clinicId: string | null = null;
+  let createdClinicJoinCode: string | undefined;
+  let createdClinicName: string | undefined;
+
+  if (payload.role === "doctor" || payload.role === "patient") {
+    if (!payload.clinicJoinCode) {
+      throw new HttpError("Cadastro de medico e paciente exige codigo da clinica.", 422);
+    }
+
+    const clinic = await ClinicModel.findOne({
+      where: { joinCode: payload.clinicJoinCode.trim() },
+    });
+    if (!clinic) throw new HttpError("Codigo da clinica invalido.", 422);
+    clinicId = clinic.id;
+  }
+
+  if (payload.role === "clinic_admin") {
+    if (!payload.clinicName) throw new HttpError("Cadastro de admin da clinica exige nome da clinica.", 422);
+
+    const normalizedName = payload.clinicName.trim();
+    if (normalizedName.length < 3) {
+      throw new HttpError("Nome da clinica deve ter ao menos 3 caracteres.", 422);
+    }
+
+    const existingClinic = await ClinicModel.findOne({ where: { name: normalizedName } });
+    if (existingClinic) throw new HttpError("Ja existe clinica com este nome.", 409);
+    createdClinicName = normalizedName;
+  }
+
   const existing = await UserModel.findOne({
     where: { email: payload.email.toLowerCase() },
   });
   if (existing) throw new HttpError("E-mail ja cadastrado.", 409);
 
   const passwordHash = await bcrypt.hash(payload.password, 10);
-  const user = await UserModel.create({
-    id: createId("user"),
-    name: payload.name,
-    email: payload.email.toLowerCase(),
-    passwordHash,
-    role: payload.role,
-    createdAt: new Date(),
-  });
+  let user;
+  try {
+    user = await sequelize.transaction(async (transaction) => {
+      if (payload.role === "clinic_admin" && createdClinicName) {
+        const clinic = await ClinicModel.create(
+          {
+            id: createId("clinic"),
+            name: createdClinicName,
+            joinCode: `CL-${randomBytes(5).toString("hex").toUpperCase()}`,
+            createdAt: new Date(),
+          },
+          { transaction },
+        );
+        clinicId = clinic.id;
+        createdClinicJoinCode = clinic.joinCode;
+      }
 
-  return sanitizeUser({
+      const createdUser = await UserModel.create(
+        {
+          id: createId("user"),
+          name: payload.name,
+          email: payload.email.toLowerCase(),
+          passwordHash,
+          role: payload.role,
+          clinicId,
+          createdAt: new Date(),
+        },
+        { transaction },
+      );
+
+      if (payload.role === "doctor") {
+        await DoctorModel.create(
+          {
+            id: createId("doctor"),
+            userId: createdUser.id,
+            clinicId,
+            createdAt: new Date(),
+          },
+          { transaction },
+        );
+      } else if (payload.role === "patient") {
+        await PatientModel.create(
+          {
+            id: createId("patient"),
+            userId: createdUser.id,
+            clinicId,
+            birthDate: null,
+            createdAt: new Date(),
+          },
+          { transaction },
+        );
+      } else if (payload.role === "admin") {
+        await AdminModel.create(
+          {
+            id: createId("admin"),
+            userId: createdUser.id,
+            createdAt: new Date(),
+          },
+          { transaction },
+        );
+      } else if (payload.role === "clinic_admin") {
+        await ClinicAdminModel.create(
+          {
+            id: createId("clinicadmin"),
+            userId: createdUser.id,
+            clinicId,
+            createdAt: new Date(),
+          },
+          { transaction },
+        );
+      }
+
+      return createdUser;
+    });
+  } catch (error) {
+    if (
+      error instanceof UniqueConstraintError &&
+      payload.role === "clinic_admin" &&
+      error.errors.some((item) => item.path === "name")
+    ) {
+      throw new HttpError("Ja existe clinica com este nome.", 409);
+    }
+    throw error;
+  }
+
+  const userOutput = sanitizeUser({
     id: user.id,
     name: user.name,
     email: user.email,
     role: user.role,
+    clinicId: user.clinicId ?? undefined,
     createdAt: user.createdAt.toISOString(),
   });
+  return {
+    ...userOutput,
+    ...(createdClinicJoinCode ? { clinicJoinCode: createdClinicJoinCode } : {}),
+  };
 };
 
 export const loginUser = async (payload: { email: string; password: string }) => {
@@ -54,10 +179,10 @@ export const loginUser = async (payload: { email: string; password: string }) =>
   const isValid = await bcrypt.compare(payload.password, user.passwordHash);
   if (!isValid) throw new HttpError("Credenciais invalidas.", 401);
 
-  const token = jwt.sign({ sub: user.id, role: user.role }, env.jwtSecret, {
+  const token = jwt.sign({ sub: user.id, role: user.role, clinicId: user.clinicId }, env.jwtSecret, {
     expiresIn: env.jwtExpiresIn as SignOptions["expiresIn"],
   });
-  const refreshToken = jwt.sign({ sub: user.id, role: user.role, typ: "refresh" }, env.refreshSecret, {
+  const refreshToken = jwt.sign({ sub: user.id, role: user.role, clinicId: user.clinicId, typ: "refresh" }, env.refreshSecret, {
     expiresIn: env.refreshExpiresIn as SignOptions["expiresIn"],
   });
   await RefreshSessionModel.create({
@@ -76,13 +201,14 @@ export const loginUser = async (payload: { email: string; password: string }) =>
       name: user.name,
       email: user.email,
       role: user.role,
+      clinicId: user.clinicId ?? undefined,
       createdAt: user.createdAt.toISOString(),
     }),
   };
 };
 
 export const verifyAuthToken = (token: string) =>
-  jwt.verify(token, env.jwtSecret) as { sub: string; role: UserRole };
+  jwt.verify(token, env.jwtSecret) as { sub: string; role: UserRole; clinicId?: string };
 
 export const refreshAuthToken = async (refreshToken: string) => {
   const session = await RefreshSessionModel.findOne({
@@ -90,10 +216,10 @@ export const refreshAuthToken = async (refreshToken: string) => {
   });
   if (!session) throw new HttpError("Refresh token invalido.", 401);
 
-  const decoded = jwt.verify(refreshToken, env.refreshSecret) as { sub: string; role: UserRole };
+  const decoded = jwt.verify(refreshToken, env.refreshSecret) as { sub: string; role: UserRole; clinicId?: string };
   if (decoded.sub !== session.userId) throw new HttpError("Refresh token invalido.", 401);
 
-  const accessToken = jwt.sign({ sub: decoded.sub, role: decoded.role }, env.jwtSecret, {
+  const accessToken = jwt.sign({ sub: decoded.sub, role: decoded.role, clinicId: decoded.clinicId }, env.jwtSecret, {
     expiresIn: env.jwtExpiresIn as SignOptions["expiresIn"],
   });
 

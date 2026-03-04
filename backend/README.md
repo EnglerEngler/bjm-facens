@@ -26,5 +26,6 @@ npm run dev
 ## Database
 ```bash
 npx sequelize-cli db:migrate
-npx sequelize-cli db:seed:all
 ```
+
+Sem seed obrigatório: o ambiente inicia vazio para testar o fluxo completo de criação de clínica/usuários.

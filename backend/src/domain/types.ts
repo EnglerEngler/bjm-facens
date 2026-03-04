@@ -1,4 +1,4 @@
-export type UserRole = "doctor" | "patient" | "admin";
+export type UserRole = "doctor" | "patient" | "admin" | "clinic_admin";
 
 export type AlertSeverity = "critical" | "high" | "medium" | "low";
 export type AlertStatus = "open" | "accepted" | "reviewed" | "ignored";
@@ -9,13 +9,21 @@ export interface User {
   email: string;
   passwordHash: string;
   role: UserRole;
+  clinicId?: string;
+  createdAt: string;
+}
+
+export interface Clinic {
+  id: string;
+  name: string;
+  joinCode: string;
   createdAt: string;
 }
 
 export interface Patient {
   id: string;
   userId: string;
-  doctorId?: string;
+  clinicId?: string;
   birthDate?: string;
 }
 

@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import { adminRoutes } from "./routes/admin-routes.js";
 import { aiRoutes } from "./routes/ai-routes.js";
 import { auditRoutes } from "./routes/audit-routes.js";
 import { authRoutes } from "./routes/auth-routes.js";
@@ -19,6 +20,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/auth", authRoutes);
 app.use("/db", dbRoutes);
+app.use("/admin", adminRoutes);
 app.use("/patients", patientRoutes);
 app.use("/prescriptions", prescriptionRoutes);
 app.use("/ai", aiRoutes);

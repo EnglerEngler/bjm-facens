@@ -6,7 +6,8 @@ export class UserModel extends Model<InferAttributes<UserModel>, InferCreationAt
   declare name: string;
   declare email: string;
   declare passwordHash: string;
-  declare role: "doctor" | "patient" | "admin";
+  declare role: "doctor" | "patient" | "admin" | "clinic_admin";
+  declare clinicId: string | null;
   declare createdAt: CreationOptional<Date>;
 }
 
@@ -31,8 +32,13 @@ UserModel.init(
       field: "password_hash",
     },
     role: {
-      type: DataTypes.ENUM("doctor", "patient", "admin"),
+      type: DataTypes.ENUM("doctor", "patient", "admin", "clinic_admin"),
       allowNull: false,
+    },
+    clinicId: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      field: "clinic_id",
     },
     createdAt: {
       type: DataTypes.DATE,

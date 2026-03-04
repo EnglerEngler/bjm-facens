@@ -1,15 +1,14 @@
-import { DataTypes, Model, type InferAttributes, type InferCreationAttributes, type CreationOptional } from "sequelize";
+import { DataTypes, Model, type CreationOptional, type InferAttributes, type InferCreationAttributes } from "sequelize";
 import { sequelize } from "../sequelize.js";
 
-export class PatientModel extends Model<InferAttributes<PatientModel>, InferCreationAttributes<PatientModel>> {
+export class DoctorModel extends Model<InferAttributes<DoctorModel>, InferCreationAttributes<DoctorModel>> {
   declare id: string;
   declare userId: string;
   declare clinicId: string | null;
-  declare birthDate: Date | null;
   declare createdAt: CreationOptional<Date>;
 }
 
-PatientModel.init(
+DoctorModel.init(
   {
     id: {
       type: DataTypes.STRING(50),
@@ -18,17 +17,13 @@ PatientModel.init(
     userId: {
       type: DataTypes.STRING(50),
       allowNull: false,
+      unique: true,
       field: "user_id",
     },
     clinicId: {
       type: DataTypes.STRING(50),
       allowNull: true,
       field: "clinic_id",
-    },
-    birthDate: {
-      type: DataTypes.DATEONLY,
-      allowNull: true,
-      field: "birth_date",
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -38,7 +33,7 @@ PatientModel.init(
   },
   {
     sequelize,
-    tableName: "patients",
+    tableName: "doctors",
     timestamps: false,
   },
 );

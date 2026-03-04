@@ -7,7 +7,14 @@ import { app } from "../app.js";
 type LoginOutput = {
   token: string;
   refreshToken: string;
-  user: { id: string; role: string; email: string };
+  user: { id: string; role: string; email: string; clinicId?: string };
+};
+
+type RegisterOutput = {
+  id: string;
+  role: string;
+  email: string;
+  clinicJoinCode?: string;
 };
 
 const startServer = async () => {
@@ -37,6 +44,77 @@ const login = async (baseUrl: string, email: string, password: string): Promise<
   return (await response.json()) as LoginOutput;
 };
 
+const register = async (baseUrl: string, payload: Record<string, unknown>): Promise<RegisterOutput> => {
+  const response = await fetch(`${baseUrl}/auth/register`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  assert.equal(response.status, 201);
+  return (await response.json()) as RegisterOutput;
+};
+
+const bootstrapClinic = async (baseUrl: string, uniq: number) => {
+  const clinicAdminEmail = `clinic_admin_${uniq}@bjm.local`;
+  const doctorEmail = `doctor_${uniq}@bjm.local`;
+  const patientEmail = `patient_${uniq}@bjm.local`;
+  const password = "123456";
+
+  const clinicAdmin = await register(baseUrl, {
+    name: "Clinic Admin",
+    email: clinicAdminEmail,
+    password,
+    role: "clinic_admin",
+    clinicName: `Clinica Teste ${uniq}`,
+  });
+  assert.ok(clinicAdmin.clinicJoinCode);
+
+  const doctor = await register(baseUrl, {
+    name: "Doctor QA",
+    email: doctorEmail,
+    password,
+    role: "doctor",
+    clinicJoinCode: clinicAdmin.clinicJoinCode,
+  });
+  const patient = await register(baseUrl, {
+    name: "Patient QA",
+    email: patientEmail,
+    password,
+    role: "patient",
+    clinicJoinCode: clinicAdmin.clinicJoinCode,
+  });
+
+  const doctorSession = await login(baseUrl, doctorEmail, password);
+  const patientSession = await login(baseUrl, patientEmail, password);
+  const clinicAdminSession = await login(baseUrl, clinicAdminEmail, password);
+
+  const createPatient = await fetch(`${baseUrl}/patients`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${doctorSession.token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      userId: patient.id,
+      birthDate: "1993-09-12",
+      record: {
+        allergies: ["dipirona"],
+        conditions: ["hipertensao"],
+        currentMedications: ["losartana"],
+      },
+    }),
+  });
+  assert.equal(createPatient.status, 201);
+  const patientProfile = await createPatient.json();
+
+  return {
+    doctorSession,
+    patientSession,
+    clinicAdminSession,
+    patientProfileId: String(patientProfile.id),
+  };
+};
+
 test("routes: health and db health", async () => {
   const api = await startServer();
   try {
@@ -56,14 +134,23 @@ test("routes: auth full flow (register/login/refresh/forgot/reset)", async () =>
   const api = await startServer();
   try {
     const uniq = Date.now();
-    const email = `qa_${uniq}@bjm.local`;
-
-    const register = await fetch(`${api.baseUrl}/auth/register`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: "QA User", email, password: "123456", role: "patient" }),
+    const clinicAdmin = await register(api.baseUrl, {
+      name: "Admin Clinica",
+      email: `admin_clinica_${uniq}@bjm.local`,
+      password: "123456",
+      role: "clinic_admin",
+      clinicName: `Clinica Fluxo ${uniq}`,
     });
-    assert.equal(register.status, 201);
+    assert.ok(clinicAdmin.clinicJoinCode);
+
+    const email = `qa_${uniq}@bjm.local`;
+    await register(api.baseUrl, {
+      name: "QA User",
+      email,
+      password: "123456",
+      role: "patient",
+      clinicJoinCode: clinicAdmin.clinicJoinCode,
+    });
 
     const loginOut = await login(api.baseUrl, email, "123456");
     assert.ok(loginOut.token.length > 20);
@@ -99,43 +186,59 @@ test("routes: auth full flow (register/login/refresh/forgot/reset)", async () =>
   }
 });
 
+test("routes: blocks patient register without clinic code", async () => {
+  const api = await startServer();
+  try {
+    const uniq = Date.now();
+    const email = `qa_nocode_${uniq}@bjm.local`;
+
+    const registerRes = await fetch(`${api.baseUrl}/auth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "QA User", email, password: "123456", role: "patient" }),
+    });
+    assert.equal(registerRes.status, 422);
+  } finally {
+    await api.close();
+  }
+});
+
 test("routes: patients and records", async () => {
   const api = await startServer();
   try {
-    const doctor = await login(api.baseUrl, "ana@bjm.local", "123456");
-    const patient = await login(api.baseUrl, "joao@bjm.local", "123456");
+    const ctx = await bootstrapClinic(api.baseUrl, Date.now());
 
     const list = await fetch(`${api.baseUrl}/patients`, {
-      headers: { Authorization: `Bearer ${doctor.token}` },
+      headers: { Authorization: `Bearer ${ctx.doctorSession.token}` },
     });
     assert.equal(list.status, 200);
     const listBody = await list.json();
     assert.ok(Array.isArray(listBody));
 
-    const readRecord = await fetch(`${api.baseUrl}/patients/patient_4/record`, {
-      headers: { Authorization: `Bearer ${doctor.token}` },
+    const readRecord = await fetch(`${api.baseUrl}/patients/${ctx.patientProfileId}/record`, {
+      headers: { Authorization: `Bearer ${ctx.doctorSession.token}` },
     });
     assert.equal(readRecord.status, 200);
 
-    const patchRecord = await fetch(`${api.baseUrl}/patients/patient_4/record`, {
+    const patchRecord = await fetch(`${api.baseUrl}/patients/${ctx.patientProfileId}/record`, {
       method: "PATCH",
       headers: {
-        Authorization: `Bearer ${patient.token}`,
+        Authorization: `Bearer ${ctx.patientSession.token}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({ currentMedications: ["losartana", "sildenafil"] }),
     });
     assert.equal(patchRecord.status, 200);
 
-    const history = await fetch(`${api.baseUrl}/patients/patient_4/record/history`, {
-      headers: { Authorization: `Bearer ${doctor.token}` },
+    const history = await fetch(`${api.baseUrl}/patients/${ctx.patientProfileId}/record/history`, {
+      headers: { Authorization: `Bearer ${ctx.doctorSession.token}` },
     });
     assert.equal(history.status, 200);
     const historyBody = await history.json();
     assert.ok(Array.isArray(historyBody));
 
     const mePrescriptions = await fetch(`${api.baseUrl}/patients/me/prescriptions`, {
-      headers: { Authorization: `Bearer ${patient.token}` },
+      headers: { Authorization: `Bearer ${ctx.patientSession.token}` },
     });
     assert.equal(mePrescriptions.status, 200);
   } finally {
@@ -146,16 +249,16 @@ test("routes: patients and records", async () => {
 test("routes: prescriptions + analysis + alerts + decision + ai + audit", async () => {
   const api = await startServer();
   try {
-    const doctor = await login(api.baseUrl, "ana@bjm.local", "123456");
+    const ctx = await bootstrapClinic(api.baseUrl, Date.now());
 
     const create = await fetch(`${api.baseUrl}/prescriptions`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${doctor.token}`,
+        Authorization: `Bearer ${ctx.doctorSession.token}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        patientId: "patient_4",
+        patientId: ctx.patientProfileId,
         conduct: "Repouso",
         items: [
           {
@@ -173,19 +276,19 @@ test("routes: prescriptions + analysis + alerts + decision + ai + audit", async 
     const rxId = created.id as string;
 
     const list = await fetch(`${api.baseUrl}/prescriptions`, {
-      headers: { Authorization: `Bearer ${doctor.token}` },
+      headers: { Authorization: `Bearer ${ctx.doctorSession.token}` },
     });
     assert.equal(list.status, 200);
 
     const detail = await fetch(`${api.baseUrl}/prescriptions/${rxId}`, {
-      headers: { Authorization: `Bearer ${doctor.token}` },
+      headers: { Authorization: `Bearer ${ctx.doctorSession.token}` },
     });
     assert.equal(detail.status, 200);
 
     const patch = await fetch(`${api.baseUrl}/prescriptions/${rxId}`, {
       method: "PATCH",
       headers: {
-        Authorization: `Bearer ${doctor.token}`,
+        Authorization: `Bearer ${ctx.doctorSession.token}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({ conduct: "Repouso e hidratacao" }),
@@ -194,12 +297,12 @@ test("routes: prescriptions + analysis + alerts + decision + ai + audit", async 
 
     const analyze = await fetch(`${api.baseUrl}/prescriptions/${rxId}/analyze`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${doctor.token}` },
+      headers: { Authorization: `Bearer ${ctx.doctorSession.token}` },
     });
     assert.equal(analyze.status, 200);
 
     const alertsRes = await fetch(`${api.baseUrl}/prescriptions/${rxId}/alerts`, {
-      headers: { Authorization: `Bearer ${doctor.token}` },
+      headers: { Authorization: `Bearer ${ctx.doctorSession.token}` },
     });
     assert.equal(alertsRes.status, 200);
     const alerts = (await alertsRes.json()) as Array<{ id: string; severity: string }>;
@@ -209,7 +312,7 @@ test("routes: prescriptions + analysis + alerts + decision + ai + audit", async 
     const decision = await fetch(`${api.baseUrl}/prescriptions/alerts/${firstAlert.id}/decision`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${doctor.token}`,
+        Authorization: `Bearer ${ctx.doctorSession.token}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({
@@ -220,18 +323,18 @@ test("routes: prescriptions + analysis + alerts + decision + ai + audit", async 
     assert.equal(decision.status, 201);
 
     const ai = await fetch(`${api.baseUrl}/ai/anamnesis/${rxId}`, {
-      headers: { Authorization: `Bearer ${doctor.token}` },
+      headers: { Authorization: `Bearer ${ctx.doctorSession.token}` },
     });
     assert.equal(ai.status, 200);
 
     const cancel = await fetch(`${api.baseUrl}/prescriptions/${rxId}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${doctor.token}` },
+      headers: { Authorization: `Bearer ${ctx.doctorSession.token}` },
     });
     assert.equal(cancel.status, 204);
 
     const audit = await fetch(`${api.baseUrl}/audit-logs?limit=20`, {
-      headers: { Authorization: `Bearer ${doctor.token}` },
+      headers: { Authorization: `Bearer ${ctx.clinicAdminSession.token}` },
     });
     assert.equal(audit.status, 200);
     const auditBody = await audit.json();
@@ -244,10 +347,10 @@ test("routes: prescriptions + analysis + alerts + decision + ai + audit", async 
 test("routes: role authorization denies patient on doctor-only routes", async () => {
   const api = await startServer();
   try {
-    const patient = await login(api.baseUrl, "joao@bjm.local", "123456");
+    const ctx = await bootstrapClinic(api.baseUrl, Date.now());
 
     const doctorOnly = await fetch(`${api.baseUrl}/audit-logs`, {
-      headers: { Authorization: `Bearer ${patient.token}` },
+      headers: { Authorization: `Bearer ${ctx.patientSession.token}` },
     });
 
     assert.equal(doctorOnly.status, 403);

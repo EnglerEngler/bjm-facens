@@ -1,6 +1,10 @@
+import { AdminModel } from "./admin-model.js";
 import { AIAssessmentModel } from "./ai-assessment-model.js";
 import { AuditLogModel } from "./audit-log-model.js";
+import { ClinicModel } from "./clinic-model.js";
+import { ClinicAdminModel } from "./clinic-admin-model.js";
 import { DoctorDecisionModel } from "./doctor-decision-model.js";
+import { DoctorModel } from "./doctor-model.js";
 import { MedicalRecordModel } from "./medical-record-model.js";
 import { MedicalRecordHistoryModel } from "./medical-record-history-model.js";
 import { PasswordResetTokenModel } from "./password-reset-token-model.js";
@@ -16,11 +20,18 @@ let initialized = false;
 export const initModels = () => {
   if (initialized) return;
 
+  UserModel.belongsTo(ClinicModel, { foreignKey: "clinicId", as: "clinic" });
+  ClinicModel.hasMany(UserModel, { foreignKey: "clinicId", as: "users" });
+  DoctorModel.belongsTo(UserModel, { foreignKey: "userId", as: "user" });
+  DoctorModel.belongsTo(ClinicModel, { foreignKey: "clinicId", as: "clinic" });
+  AdminModel.belongsTo(UserModel, { foreignKey: "userId", as: "user" });
+  ClinicAdminModel.belongsTo(UserModel, { foreignKey: "userId", as: "user" });
+  ClinicAdminModel.belongsTo(ClinicModel, { foreignKey: "clinicId", as: "clinic" });
   PatientModel.belongsTo(UserModel, { foreignKey: "userId", as: "user" });
-  PatientModel.belongsTo(UserModel, { foreignKey: "doctorId", as: "doctor" });
+  PatientModel.belongsTo(ClinicModel, { foreignKey: "clinicId", as: "clinic" });
   MedicalRecordModel.belongsTo(PatientModel, { foreignKey: "patientId", as: "patient" });
   PrescriptionModel.belongsTo(PatientModel, { foreignKey: "patientId", as: "patient" });
-  PrescriptionModel.belongsTo(UserModel, { foreignKey: "doctorId", as: "doctor" });
+  PrescriptionModel.belongsTo(DoctorModel, { foreignKey: "doctorId", targetKey: "userId", as: "doctor" });
   PrescriptionItemModel.belongsTo(PrescriptionModel, { foreignKey: "prescriptionId", as: "prescription" });
   PrescriptionModel.hasMany(PrescriptionItemModel, { foreignKey: "prescriptionId", as: "items" });
   RiskAlertModel.belongsTo(PrescriptionModel, { foreignKey: "prescriptionId", as: "prescription" });
@@ -35,9 +46,13 @@ export const initModels = () => {
 };
 
 export {
+  AdminModel,
   AIAssessmentModel,
   AuditLogModel,
+  ClinicModel,
+  ClinicAdminModel,
   DoctorDecisionModel,
+  DoctorModel,
   MedicalRecordHistoryModel,
   MedicalRecordModel,
   PasswordResetTokenModel,

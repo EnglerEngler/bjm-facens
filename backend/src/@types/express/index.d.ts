@@ -6,6 +6,7 @@ declare global {
       auth?: {
         userId: string;
         role: UserRole;
+        clinicId?: string;
       };
     }
   }
