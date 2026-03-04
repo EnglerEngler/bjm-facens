@@ -10,6 +10,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { session, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const isLoginRoute = pathname === "/login";
 
   const signOut = () => {
     logout();
@@ -18,10 +19,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <header className="card app-header">
-        <div className="between" style={{ maxWidth: 1100, margin: "0 auto" }}>
+      <header className={`card app-header${isLoginRoute ? " app-header-login" : ""}`}>
+        <div className="between" style={{ width: "100%", margin: 0 }}>
           <Link href={session ? roleDefaultPath(session.user.role) : "/login"} aria-label="BJM" className="brand-link">
-            <Image src="/logo-bjm.png" alt="BJM" width={220} height={140} priority className="brand-logo" />
+            <Image src="/logo-bjm.png" alt="BJM" width={1362} height={630} priority className="brand-logo" />
           </Link>
           <div className="row">
             {session?.user.role === "doctor" && <Link href="/doctor/dashboard">Dashboard Médico</Link>}

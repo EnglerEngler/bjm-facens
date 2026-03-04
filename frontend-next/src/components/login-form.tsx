@@ -100,10 +100,6 @@ export function LoginForm() {
 
         {error && <p className="error">{error}</p>}
       </form>
-
-      <p className="muted" style={{ marginTop: 16 }}>
-        Usuários seed: ana@bjm.local, joao@bjm.local, admin@bjm.local (senha 123456).
-      </p>
     </div>
   );
 }

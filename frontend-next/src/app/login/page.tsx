@@ -10,20 +10,20 @@ export default function LoginPage() {
 
   return (
     <main className="login-main">
+      <div className="login-backdrop" aria-hidden="true" />
       <section className="login-layout">
         <aside className="login-hero">
           <p className="login-chip">Plataforma Clínica Inteligente</p>
-          <h1>Prescrição assistida com foco em segurança do paciente.</h1>
+          <h1>Tecnologia clínica para decisões médicas mais seguras.</h1>
           <p>
-            Analise riscos, contraindicações e histórico clínico em um fluxo orientado para decisões médicas seguras.
+            Fluxo visual inspirado no seu modelo, com dados clínicos centralizados, rastreabilidade e suporte para
+            decisões em tempo real.
           </p>
-          <ul>
-            <li>Análise de alertas por severidade.</li>
-            <li>Anamnese estruturada por IA com explicabilidade.</li>
-            <li>Registro auditável de decisões clínicas.</li>
-          </ul>
+          <a href="#painel-login" className="login-cta">
+            Como funciona
+          </a>
         </aside>
-        <section className="login-panel">
+        <section className="login-panel" id="painel-login">
           <LoginForm />
         </section>
       </section>
