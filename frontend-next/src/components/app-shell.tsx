@@ -21,7 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="card" style={{ marginBottom: 0, borderRadius: 0 }}>
         <div className="between" style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Link href={session ? roleDefaultPath(session.user.role) : "/login"} aria-label="BJM">
-            <Image src="/logo-bjm.jpg" alt="BJM" width={120} height={66} priority />
+            <Image src="/logo-bjm.png" alt="BJM" width={120} height={80} priority />
           </Link>
           <div className="row">
             {session?.user.role === "doctor" && <Link href="/doctor/dashboard">Dashboard Médico</Link>}
