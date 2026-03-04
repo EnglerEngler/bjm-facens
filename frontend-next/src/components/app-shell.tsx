@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
@@ -18,7 +19,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       <header className="card" style={{ marginBottom: 0, borderRadius: 0 }}>
         <div className="between" style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <strong>Prescrição Assistida BJM</strong>
+          <Link href={session ? "/" : "/login"} aria-label="BJM">
+            <Image src="/logo-bjm.jpg" alt="BJM" width={120} height={66} priority />
+          </Link>
           <div className="row">
             {session?.user.role === "doctor" && <Link href="/doctor/dashboard">Dashboard Médico</Link>}
             {session?.user.role === "patient" && <Link href="/patient/dashboard">Dashboard Paciente</Link>}
