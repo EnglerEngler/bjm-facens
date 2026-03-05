@@ -47,6 +47,17 @@ export interface MedicalRecordHistoryEntry {
   createdAt: string;
 }
 
+export interface PatientAnamnesis {
+  patientId: string;
+  answers: Record<string, string>;
+  formVersion: string;
+  isCompleted: boolean;
+  completedAt: string | null;
+  updatedByUserId: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
 export interface PrescriptionItem {
   medication: string;
   dose: string;

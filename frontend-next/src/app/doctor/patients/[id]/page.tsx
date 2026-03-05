@@ -67,7 +67,10 @@ export default function DoctorPatientRecordPage() {
               <strong>Medicamentos em uso:</strong> {payload.record.currentMedications.join(", ") || "Nenhum"}
             </p>
             <p className="muted">Atualizado em: {new Date(payload.record.lastUpdatedAt).toLocaleString()}</p>
-            <Link href={`/doctor/prescriptions/new?patientId=${patientId}`}>Criar nova prescrição</Link>
+            <div className="row">
+              <Link href={`/doctor/prescriptions/new?patientId=${patientId}`}>Criar nova prescrição</Link>
+              <Link href={`/doctor/patients/${patientId}/anamnesis`}>Ver anamnese completa</Link>
+            </div>
           </section>
 
           <section className="card">

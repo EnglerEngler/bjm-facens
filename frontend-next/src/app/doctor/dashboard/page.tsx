@@ -70,6 +70,7 @@ export default function DoctorDashboardPage() {
                   </div>
                   <div className="row">
                     <Link href={`/doctor/patients/${patient.id}`}>Abrir prontuário</Link>
+                    <Link href={`/doctor/patients/${patient.id}/anamnesis`}>Ver anamnese</Link>
                     <Link href={`/doctor/prescriptions/new?patientId=${patient.id}`}>Nova prescrição</Link>
                   </div>
                 </div>

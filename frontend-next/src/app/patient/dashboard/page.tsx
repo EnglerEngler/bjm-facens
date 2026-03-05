@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
 import { loadPatientPrescriptions, type PatientPrescriptionView } from "@/lib/prescriptions-service";
 
@@ -33,6 +34,9 @@ export default function PatientDashboardPage() {
     <main>
       <h1>Dashboard do Paciente</h1>
       <p className="muted">Prescrições e orientações liberadas.</p>
+      <p>
+        <Link href="/patient/anamnesis">Preencher anamnese completa</Link>
+      </p>
 
       {loading && <p>Carregando prescrições...</p>}
       {error && <p className="error">{error}</p>}

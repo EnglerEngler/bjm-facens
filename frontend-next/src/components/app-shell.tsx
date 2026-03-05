@@ -117,6 +117,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       Dashboard Paciente
                     </Link>
                   )}
+                  {canAccessPatientDashboard && (
+                    <Link href="/patient/anamnesis" className="menu-link">
+                      Anamnese
+                    </Link>
+                  )}
                   {canAccessAdminArea && (
                     <Link href="/admin/dashboard" className="menu-link">
                       Dashboard Admin
