@@ -241,6 +241,31 @@ test("routes: patients and records", async () => {
       headers: { Authorization: `Bearer ${ctx.patientSession.token}` },
     });
     assert.equal(mePrescriptions.status, 200);
+
+    const saveAnamnesis = await fetch(`${api.baseUrl}/patients/me/anamnesis`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${ctx.patientSession.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        answers: {
+          chronic_disease: "Sim, hipertensao.",
+          smoking: "Nao",
+          biological_sex: "masculino",
+          male_erection_quality: "Sim",
+        },
+        isCompleted: true,
+      }),
+    });
+    assert.equal(saveAnamnesis.status, 201);
+
+    const readAnamnesis = await fetch(`${api.baseUrl}/patients/${ctx.patientProfileId}/anamnesis`, {
+      headers: { Authorization: `Bearer ${ctx.doctorSession.token}` },
+    });
+    assert.equal(readAnamnesis.status, 200);
+    const anamnesisBody = await readAnamnesis.json();
+    assert.equal(anamnesisBody.anamnesis.answers.chronic_disease, "Sim, hipertensao.");
   } finally {
     await api.close();
   }
