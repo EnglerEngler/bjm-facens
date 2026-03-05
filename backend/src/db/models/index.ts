@@ -8,6 +8,7 @@ import { DoctorModel } from "./doctor-model.js";
 import { MedicalRecordModel } from "./medical-record-model.js";
 import { MedicalRecordHistoryModel } from "./medical-record-history-model.js";
 import { PasswordResetTokenModel } from "./password-reset-token-model.js";
+import { PatientAnamnesisModel } from "./patient-anamnesis-model.js";
 import { PatientModel } from "./patient-model.js";
 import { PrescriptionItemModel } from "./prescription-item-model.js";
 import { PrescriptionModel } from "./prescription-model.js";
@@ -30,6 +31,7 @@ export const initModels = () => {
   PatientModel.belongsTo(UserModel, { foreignKey: "userId", as: "user" });
   PatientModel.belongsTo(ClinicModel, { foreignKey: "clinicId", as: "clinic" });
   MedicalRecordModel.belongsTo(PatientModel, { foreignKey: "patientId", as: "patient" });
+  PatientAnamnesisModel.belongsTo(PatientModel, { foreignKey: "patientId", as: "patient" });
   PrescriptionModel.belongsTo(PatientModel, { foreignKey: "patientId", as: "patient" });
   PrescriptionModel.belongsTo(DoctorModel, { foreignKey: "doctorId", targetKey: "userId", as: "doctor" });
   PrescriptionItemModel.belongsTo(PrescriptionModel, { foreignKey: "prescriptionId", as: "prescription" });
@@ -56,6 +58,7 @@ export {
   MedicalRecordHistoryModel,
   MedicalRecordModel,
   PasswordResetTokenModel,
+  PatientAnamnesisModel,
   PatientModel,
   PrescriptionItemModel,
   PrescriptionModel,

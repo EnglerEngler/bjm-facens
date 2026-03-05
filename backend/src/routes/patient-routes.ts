@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   MedicalRecordHistoryModel,
   MedicalRecordModel,
+  PatientAnamnesisModel,
   PatientModel,
   PrescriptionItemModel,
   PrescriptionModel,
@@ -29,6 +30,11 @@ const createPatientSchema = z.object({
       currentMedications: z.array(z.string().min(2)).default([]),
     })
     .optional(),
+});
+
+const upsertAnamnesisSchema = z.object({
+  answers: z.record(z.string().max(2000)),
+  isCompleted: z.boolean().optional(),
 });
 
 export const patientRoutes = Router();
@@ -58,6 +64,90 @@ patientRoutes.get("/me/prescriptions", requireRole("patient"), async (req, res, 
     });
 
     res.json(prescriptions);
+  } catch (error) {
+    next(error);
+  }
+});
+
+patientRoutes.get("/me/anamnesis", requireRole("patient"), async (req, res, next) => {
+  try {
+    const patient = await PatientModel.findOne({
+      where: { userId: req.auth!.userId },
+    });
+    if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
+
+    const anamnesis = await PatientAnamnesisModel.findByPk(patient.id);
+
+    if (!anamnesis) {
+      return res.json({
+        patientId: patient.id,
+        answers: {},
+        formVersion: "kira-v1",
+        isCompleted: false,
+        completedAt: null,
+        updatedByUserId: req.auth!.userId,
+        createdAt: null,
+        updatedAt: null,
+      });
+    }
+
+    res.json(anamnesis);
+  } catch (error) {
+    next(error);
+  }
+});
+
+patientRoutes.put("/me/anamnesis", requireRole("patient"), async (req, res, next) => {
+  try {
+    const payload = upsertAnamnesisSchema.parse(req.body);
+    const patient = await PatientModel.findOne({
+      where: { userId: req.auth!.userId },
+    });
+    if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
+
+    const now = new Date();
+    const anamnesis = await PatientAnamnesisModel.findByPk(patient.id);
+
+    if (!anamnesis) {
+      const created = await PatientAnamnesisModel.create({
+        patientId: patient.id,
+        answers: payload.answers,
+        formVersion: "kira-v1",
+        isCompleted: payload.isCompleted ?? false,
+        completedAt: payload.isCompleted ? now : null,
+        updatedByUserId: req.auth!.userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      addAuditLog({
+        actorUserId: req.auth!.userId,
+        action: "anamnesis.create",
+        resource: "patient_anamneses",
+        resourceId: patient.id,
+        ip: req.ip,
+      });
+
+      return res.status(201).json(created);
+    }
+
+    anamnesis.answers = payload.answers;
+    anamnesis.isCompleted = payload.isCompleted ?? anamnesis.isCompleted;
+    anamnesis.completedAt = anamnesis.isCompleted ? now : null;
+    anamnesis.updatedByUserId = req.auth!.userId;
+    anamnesis.updatedAt = now;
+    await anamnesis.save();
+
+    addAuditLog({
+      actorUserId: req.auth!.userId,
+      action: "anamnesis.update",
+      resource: "patient_anamneses",
+      resourceId: patient.id,
+      ip: req.ip,
+      metadata: { answerCount: Object.keys(payload.answers).length, isCompleted: anamnesis.isCompleted },
+    });
+
+    res.json(anamnesis);
   } catch (error) {
     next(error);
   }
@@ -221,6 +311,30 @@ patientRoutes.get("/:patientId/record/history", requireRole("doctor", "admin", "
       order: [["createdAt", "DESC"]],
     });
     res.json(entries);
+  } catch (error) {
+    next(error);
+  }
+});
+
+patientRoutes.get("/:patientId/anamnesis", requireRole("doctor", "admin", "clinic_admin"), async (req, res, next) => {
+  try {
+    const patientId = String(req.params.patientId);
+    const patient = await PatientModel.findByPk(patientId);
+    if (!patient) throw new HttpError("Paciente nao encontrado.", 404);
+    ensureClinicAccess(req, patient.clinicId);
+
+    const anamnesis = await PatientAnamnesisModel.findByPk(patient.id);
+    if (!anamnesis) throw new HttpError("Anamnese do paciente ainda nao foi preenchida.", 404);
+
+    addAuditLog({
+      actorUserId: req.auth!.userId,
+      action: "anamnesis.read",
+      resource: "patient_anamneses",
+      resourceId: patient.id,
+      ip: req.ip,
+    });
+
+    res.json({ patient, anamnesis });
   } catch (error) {
     next(error);
   }
