@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { COOKIE_ROLE_KEY, COOKIE_TOKEN_KEY } from "@/lib/constants";
 
-const publicRoutes = ["/login", "/unauthorized"];
+const publicRoutes = ["/login", "/como-funciona", "/unauthorized"];
 
 const hasRoleAccess = (pathname: string, role: string) => {
   if (pathname.startsWith("/doctor")) return role === "doctor";

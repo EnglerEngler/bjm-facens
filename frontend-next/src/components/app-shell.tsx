@@ -78,102 +78,104 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <header className={`card app-header${isOverlayRoute ? " app-header-login" : ""}`}>
-        <div className="between" style={{ width: "100%", margin: 0 }}>
-          <Link href={session ? roleDefaultPath(session.user.role) : "/login"} aria-label="BJM" className="brand-link">
-            <Image src="/logo-bjm.png" alt="BJM" width={1362} height={630} priority className="brand-logo" />
-          </Link>
-          <div className="header-right">
-            {session && (
-              <>
-                {profilePath ? (
-                  <Link href={profilePath} className="user-chip user-chip-link" aria-label={`Abrir perfil de ${userName}`}>
-                    <span className="user-avatar">{userInitials || "U"}</span>
-                    <span className="user-info">
-                      <strong>{userName}</strong>
-                      <small>{userRoleLabel}</small>
-                    </span>
-                  </Link>
-                ) : (
-                  <div className="user-chip" aria-label={`Usuario: ${userName}`}>
-                    <span className="user-avatar">{userInitials || "U"}</span>
-                    <span className="user-info">
-                      <strong>{userName}</strong>
-                      <small>{userRoleLabel}</small>
-                    </span>
-                  </div>
-                )}
-              </>
-            )}
-            {hasMenuEntries && (
-              <div className="app-menu" ref={menuRef}>
-                <button
-                  type="button"
-                  className="menu-trigger"
-                  onClick={() => setIsMenuOpen((prev) => !prev)}
-                  aria-label="Abrir menu de navegação"
-                  aria-expanded={isMenuOpen}
-                  aria-haspopup="menu"
-                >
-                  <span />
-                  <span />
-                  <span />
-                </button>
-                <nav className={`menu-dropdown${isMenuOpen ? " menu-dropdown-open" : ""}`} aria-label="Menu principal">
-                  {canAccessDoctorDashboard && (
-                    <Link href="/doctor/dashboard" className="menu-link">
-                      Dashboard Médico
+      {!isOverlayRoute && (
+        <header className="card app-header">
+          <div className="between" style={{ width: "100%", margin: 0 }}>
+            <Link href={session ? roleDefaultPath(session.user.role) : "/login"} aria-label="BJM" className="brand-link">
+              <Image src="/logo-bjm.png" alt="BJM" width={1362} height={630} priority className="brand-logo" />
+            </Link>
+            <div className="header-right">
+              {session && (
+                <>
+                  {profilePath ? (
+                    <Link href={profilePath} className="user-chip user-chip-link" aria-label={`Abrir perfil de ${userName}`}>
+                      <span className="user-avatar">{userInitials || "U"}</span>
+                      <span className="user-info">
+                        <strong>{userName}</strong>
+                        <small>{userRoleLabel}</small>
+                      </span>
                     </Link>
+                  ) : (
+                    <div className="user-chip" aria-label={`Usuario: ${userName}`}>
+                      <span className="user-avatar">{userInitials || "U"}</span>
+                      <span className="user-info">
+                        <strong>{userName}</strong>
+                        <small>{userRoleLabel}</small>
+                      </span>
+                    </div>
                   )}
-                  {canAccessPatientDashboard && (
-                    <Link href="/patient/dashboard" className="menu-link">
-                      Dashboard Paciente
-                    </Link>
-                  )}
-                  {canAccessPatientDashboard && (
-                    <Link href="/patient/anamnesis" className="menu-link">
-                      Anamnese
-                    </Link>
-                  )}
-                  {canAccessPatientDashboard && (
-                    <Link href="/patient/profile" className="menu-link">
-                      Meu Perfil
-                    </Link>
-                  )}
-                  {canAccessAdminArea && (
-                    <Link href="/admin/dashboard" className="menu-link">
-                      Dashboard Admin
-                    </Link>
-                  )}
-                  {canAccessClinicAdminArea && (
-                    <Link href="/clinic/dashboard" className="menu-link">
-                      Dashboard Clínica
-                    </Link>
-                  )}
-                  {canAccessAudit && (
-                    <Link href={canAccessClinicAdminArea ? "/clinic/audit" : "/admin/audit"} className="menu-link">
-                      Auditoria
-                    </Link>
-                  )}
-                  {canAccessLogin && (
-                    <Link href="/login" className="menu-link">
-                      Entrar
-                    </Link>
-                  )}
-                  {session && (
-                    <>
-                      <div className="menu-divider" />
-                      <button type="button" className="menu-link menu-link-danger" onClick={signOut}>
-                        Sair
-                      </button>
-                    </>
-                  )}
-                </nav>
-              </div>
-            )}
+                </>
+              )}
+              {hasMenuEntries && (
+                <div className="app-menu" ref={menuRef}>
+                  <button
+                    type="button"
+                    className="menu-trigger"
+                    onClick={() => setIsMenuOpen((prev) => !prev)}
+                    aria-label="Abrir menu de navegação"
+                    aria-expanded={isMenuOpen}
+                    aria-haspopup="menu"
+                  >
+                    <span />
+                    <span />
+                    <span />
+                  </button>
+                  <nav className={`menu-dropdown${isMenuOpen ? " menu-dropdown-open" : ""}`} aria-label="Menu principal">
+                    {canAccessDoctorDashboard && (
+                      <Link href="/doctor/dashboard" className="menu-link">
+                        Dashboard Médico
+                      </Link>
+                    )}
+                    {canAccessPatientDashboard && (
+                      <Link href="/patient/dashboard" className="menu-link">
+                        Dashboard Paciente
+                      </Link>
+                    )}
+                    {canAccessPatientDashboard && (
+                      <Link href="/patient/anamnesis" className="menu-link">
+                        Anamnese
+                      </Link>
+                    )}
+                    {canAccessPatientDashboard && (
+                      <Link href="/patient/profile" className="menu-link">
+                        Meu Perfil
+                      </Link>
+                    )}
+                    {canAccessAdminArea && (
+                      <Link href="/admin/dashboard" className="menu-link">
+                        Dashboard Admin
+                      </Link>
+                    )}
+                    {canAccessClinicAdminArea && (
+                      <Link href="/clinic/dashboard" className="menu-link">
+                        Dashboard Clínica
+                      </Link>
+                    )}
+                    {canAccessAudit && (
+                      <Link href={canAccessClinicAdminArea ? "/clinic/audit" : "/admin/audit"} className="menu-link">
+                        Auditoria
+                      </Link>
+                    )}
+                    {canAccessLogin && (
+                      <Link href="/login" className="menu-link">
+                        Entrar
+                      </Link>
+                    )}
+                    {session && (
+                      <>
+                        <div className="menu-divider" />
+                        <button type="button" className="menu-link menu-link-danger" onClick={signOut}>
+                          Sair
+                        </button>
+                      </>
+                    )}
+                  </nav>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
       {children}
     </>
   );
