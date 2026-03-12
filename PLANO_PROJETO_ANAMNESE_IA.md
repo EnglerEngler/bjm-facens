@@ -1,4 +1,4 @@
-# Projeto: Plataforma de Prescrição Médica Assistida com Anamnese por IA
+# Projeto: Plataforma de Prescrição Médica com Anamnese Estruturada
 
 ## 1. Objetivo do Documento
 Este documento define o plano completo para construir uma plataforma onde o médico cria uma prescrição e o sistema analisa automaticamente prontuário + histórico do paciente para verificar riscos, contraindicações e compatibilidade terapêutica.
@@ -17,8 +17,8 @@ Criar um sistema com:
 - Login/cadastro unificado.
 - Área do médico.
 - Área do paciente.
-- Motor de análise clínica (regras + IA).
-- Geração de anamnese estruturada por IA.
+- Motor de análise clínica no backend.
+- Consolidação estruturada da anamnese e do prontuário no backend.
 - Alertas de segurança e justificativa obrigatória quando necessário.
 - Trilhas de auditoria e compliance (LGPD).
 
@@ -26,7 +26,7 @@ Criar um sistema com:
 - Reduzir eventos adversos por prescrição.
 - Aumentar segurança e padronização clínica.
 - Melhorar produtividade do médico.
-- Aumentar rastreabilidade das decisões médicas assistidas por IA.
+- Aumentar rastreabilidade das decisões médicas assistidas por regras clínicas e dados estruturados.
 
 ---
 
@@ -37,7 +37,7 @@ Criar um sistema com:
 - Dois perfis com experiências separadas: médico e paciente.
 - Cadastro/consulta de prontuário essencial.
 - Prescrição médica com análise automática de risco.
-- Anamnese gerada por IA para apoio à decisão.
+- Anamnese estruturada consolidada pelo backend para apoio à decisão.
 - Registro da decisão médica sobre alertas.
 - Auditoria mínima de ações sensíveis.
 
@@ -55,9 +55,9 @@ Criar um sistema com:
 ### 4.1 Médico
 - Acessa prontuário do paciente.
 - Cria prescrição e conduta.
-- Consulta anamnese gerada por IA.
+- Consulta resumo clínico estruturado do paciente.
 - Revisa alertas com severidade.
-- Mantém/altera descarta recomendação da IA com justificativa.
+- Mantém, altera ou descarta recomendação do sistema com justificativa.
 
 ### 4.2 Paciente
 - Mantém dados clínicos básicos atualizados.
@@ -85,9 +85,9 @@ Criar um sistema com:
 1. Médico busca/seleciona paciente.
 2. Sistema mostra resumo clínico + dados críticos.
 3. Médico preenche prescrição e conduta.
-4. Sistema executa análise (regras + IA).
-5. Sistema exibe alertas por severidade e anamnese estruturada.
-6. Médico revisa, decide, justifica quando necessário.
+4. Sistema executa análise no backend com base nos dados estruturados do paciente.
+5. Sistema exibe alertas por severidade e resumo clínico consolidado.
+6. Médico revisa, decide e justifica quando necessário.
 7. Prescrição é finalizada e auditada.
 
 ### 5.3 Fluxo do Paciente
@@ -122,11 +122,17 @@ Criar um sistema com:
 - RF-023: Classificar alertas por severidade (Crítico/Alto/Médio/Baixo).
 - RF-024: Bloquear finalização em cenário crítico sem ação explícita.
 
-### 6.4 Anamnese por IA
-- RF-030: Gerar síntese estruturada da anamnese.
-- RF-031: Exibir evidências usadas na análise.
-- RF-032: Exibir limitações/avisos da IA.
-- RF-033: Versionar prompt/modelo para rastreabilidade.
+### 6.4 Anamnese Estruturada e Consolidação Clínica
+- RF-030: Gerar resumo clínico estruturado da anamnese e do prontuário no backend.
+- RF-031: Exibir evidências e fontes de dados usadas na análise.
+- RF-032: Exibir limitações, lacunas de informação e avisos de completude.
+- RF-033: Versionar regras de consolidação clínica para rastreabilidade.
+- RF-034: Coletar e versionar dados antropométricos mínimos do paciente (`altura`, `peso`, `IMC calculado`, `circunferência abdominal` quando aplicável).
+- RF-034A: Calcular o `IMC` automaticamente no backend a partir de `peso` e `altura`, sem edição manual do valor calculado.
+- RF-035: Coletar sinais vitais e contexto clínico recente (`pressão arterial`, `frequência cardíaca`, `temperatura`, `saturação`, quando disponíveis).
+- RF-036: Estruturar a anamnese em blocos clínicos obrigatórios, e não apenas texto livre.
+- RF-037: Reaproveitar `sexo biológico` do perfil estruturado do paciente, sem perguntar novamente na anamnese.
+- RF-038: Habilitar perguntas condicionais por sexo biológico, idade, comorbidades e contexto da consulta.
 
 ### 6.5 Decisão Médica e Auditoria
 - RF-040: Médico marca alerta como aceito/revisado/ignorado.
@@ -154,11 +160,15 @@ Criar um sistema com:
 ---
 
 ## 8. Regras de Negócio Críticas
-- RN-01: IA não substitui decisão médica.
+- RN-01: O sistema não substitui decisão médica.
 - RN-02: Alerta crítico exige confirmação explícita do médico.
 - RN-03: Alergia severa conhecida deve bloquear prescrição até ajuste/justificativa.
 - RN-04: Toda recomendação deve exibir fonte de dado utilizada.
 - RN-05: Toda decisão final deve ficar auditável.
+- RN-06: `Sexo biológico` é dado de perfil do paciente e deve ser consumido pela anamnese como informação estruturada, sem nova pergunta manual.
+- RN-07: `Altura` e `peso` devem ser tratados como campos obrigatórios para cálculo de IMC e apoio à análise clínica, salvo exceção explicitamente justificada.
+- RN-07A: `IMC` deve ser sempre derivado automaticamente de `peso` e `altura`; o usuário informa apenas as medidas de origem.
+- RN-08: Perguntas condicionais ginecológicas/urológicas/reprodutivas devem ser exibidas com base em sexo biológico e faixa etária, preservando trilha de auditoria.
 
 ---
 
@@ -167,7 +177,7 @@ Criar um sistema com:
 - UI-02: Dashboard Médico.
 - UI-03: Busca de Paciente e Prontuário (médico).
 - UI-04: Prescrição + Alertas.
-- UI-05: Anamnese IA detalhada.
+- UI-05: Resumo clínico estruturado detalhado.
 - UI-06: Dashboard Paciente.
 - UI-07: Perfil/Histórico Paciente.
 - UI-08: Logs/Auditoria (admin/médico autorizado).
@@ -181,20 +191,93 @@ Criar um sistema com:
 - Backend API (ex.: Node.js + framework).
 - Banco relacional (PostgreSQL).
 - Serviço de análise clínica (regras determinísticas).
-- Serviço de IA (síntese de anamnese + explicabilidade).
+- Serviço de consolidação clínica no backend.
 - Sistema de auditoria/logging.
 
-### 10.2 Estratégia de IA (camadas)
+### 10.2 Estratégia de Consolidação Clínica
 1. Regras clínicas determinísticas (alergia, interação, duplicidade terapêutica, comorbidade).
-2. IA generativa para organizar e sintetizar anamnese.
-3. Pós-validação da saída (schema, consistência mínima, evidências).
+2. Consolidação backend dos dados estruturados de anamnese, perfil, prontuário e prescrição.
+3. Pós-validação da saída (schema, consistência mínima, evidências e completude).
 
-### 10.3 Dados a persistir para rastreabilidade da IA
-- Input consolidado usado pela IA.
-- Output final da IA.
-- Versão de prompt/modelo.
+### 10.3 Dados a persistir para rastreabilidade da consolidação
+- Input consolidado usado pelo backend.
+- Output final consolidado.
+- Versão das regras de consolidação.
 - Data/hora da execução.
 - Usuário que acionou.
+
+### 10.4 Contrato mínimo da anamnese estruturada
+O sistema não deve depender apenas de resumo textual. A anamnese precisa ter um schema clínico mínimo, com campos estruturados e histórico de versão.
+
+#### 10.4.0 Blocos oficiais da anamnese
+- Sintomas.
+- Histórico médico.
+- Estilo de vida.
+- Alergias.
+- Perguntas condicionais por sexo biológico.
+
+#### 10.4.1 Dados demográficos e contexto base
+- Nome completo.
+- Data de nascimento / idade calculada.
+- Sexo biológico vindo do perfil do paciente.
+- Motivo principal da consulta.
+- Especialidade ou contexto da consulta.
+- Data/hora da coleta da anamnese.
+
+#### 10.4.2 Bloco de sintomas
+- Qual é a sua queixa principal.
+- Quando isso começou.
+- Como os sintomas evoluíram desde o início.
+
+#### 10.4.3 Bloco de histórico médico
+- Você tem alguma doença ou condição de saúde já diagnosticada.
+- Você usa algum medicamento atualmente.
+- Já fez alguma cirurgia ou já ficou internado.
+- Existe histórico de doenças importantes na sua família.
+
+#### 10.4.4 Bloco de estilo de vida
+- Você fuma.
+- Você consome bebida alcoólica.
+- Você pratica atividade física.
+- Como está seu sono.
+- Como está sua alimentação.
+- Altura.
+- Peso atual.
+- IMC calculado automaticamente.
+- IMC exibido com classificação de faixa nutricional como apoio visual no dashboard.
+
+#### 10.4.5 Bloco de alergias
+- Você tem alguma alergia.
+- Se sim, qual alergia e qual reação ela causa.
+
+#### 10.4.6 Perguntas condicionais por sexo biológico
+- Feminino:
+  - Você está grávida ou existe possibilidade de gestação.
+  - Sua menstruação está regular.
+  - Qual foi a data da sua última menstruação.
+  - Você está na menopausa.
+  - Tem algum sintoma ginecológico relevante.
+- Masculino:
+  - Você tem dificuldade para urinar.
+  - Percebe jato urinário fraco.
+  - Acorda à noite para urinar com frequência.
+  - Tem algum desconforto urológico relevante.
+
+#### 10.4.7 Saída esperada da consolidação backend
+- Resumo clínico objetivo.
+- Problemas ativos identificados.
+- Lacunas de informação.
+- Riscos e contraindicações percebidos.
+- Perguntas adicionais sugeridas para o médico.
+- Evidências usadas na consolidação.
+
+### 10.5 Regras para perguntas condicionais
+- Não perguntar `qual seu gênero` ou `qual seu sexo` dentro da anamnese se esse dado já existe no perfil estruturado.
+- O campo `sexo biológico` deve ser carregado automaticamente do perfil do paciente e apenas exibido como dado de contexto, se necessário.
+- Perguntas específicas de protocolo devem ser condicionadas por contexto clínico e sexo biológico:
+  - Exemplo: ciclo menstrual, gestação, menopausa, corrimento, sangramento uterino.
+  - Exemplo: sintomas prostáticos, disúria, jato urinário fraco, noctúria.
+- Quando o perfil estiver incompleto, o sistema deve bloquear o início da anamnese até a conclusão do dado obrigatório no onboarding/perfil, em vez de duplicar pergunta.
 
 ---
 
@@ -203,12 +286,15 @@ Criar um sistema com:
 - `patients`
 - `doctors`
 - `medical_records`
+- `anamnesis_sessions`
+- `anamnesis_answers`
+- `anamnesis_versions`
 - `allergies`
 - `conditions`
 - `current_medications`
 - `prescriptions`
 - `prescription_items`
-- `ai_assessments`
+- `clinical_assessments`
 - `risk_alerts`
 - `doctor_decisions`
 - `audit_logs`
@@ -218,11 +304,15 @@ Criar um sistema com:
 ## 12. Critérios de Aceite do MVP
 - CA-01: Médico consegue criar prescrição completa.
 - CA-02: Sistema cruza prescrição com prontuário e gera alertas.
-- CA-03: Sistema gera anamnese IA estruturada e visível para o médico.
+- CA-03: Sistema gera resumo clínico estruturado e visível para o médico.
 - CA-04: Alerta crítico exige ação explícita para finalizar.
 - CA-05: Médico registra decisão com justificativa quando exigido.
 - CA-06: Paciente visualiza conduta liberada.
 - CA-07: Ações críticas ficam registradas em auditoria.
+- CA-08: Anamnese não pergunta sexo/gênero quando esse dado já existe no perfil estruturado do paciente.
+- CA-09: Anamnese exige altura e peso antes de ser considerada completa.
+- CA-09A: Ao informar altura e peso válidos, o sistema calcula e persiste o IMC automaticamente.
+- CA-10: Perguntas condicionais por sexo biológico funcionam com base no perfil do paciente.
 
 ---
 
@@ -230,15 +320,15 @@ Criar um sistema com:
 - Taxa de alertas críticos detectados.
 - Taxa de revisão de prescrição por alerta.
 - Tempo médio para concluir prescrição.
-- Concordância médico x recomendação IA.
+- Concordância médico x recomendação do sistema.
 - Taxa de eventos adversos reportados.
 - NPS/Satisfação de médico e paciente.
 
 ---
 
 ## 14. Riscos e Mitigações
-- R-01: IA produzir síntese incompleta.
-  - Mitigação: camada de regras obrigatória + validação + revisão médica.
+- R-01: Consolidação backend produzir resumo incompleto por dados ausentes.
+  - Mitigação: schema obrigatório + validação + revisão médica + aviso de completude.
 - R-02: Dados clínicos incompletos.
   - Mitigação: campos mínimos obrigatórios + aviso de completude.
 - R-03: Vazamento de dados sensíveis.
@@ -256,8 +346,8 @@ Criar um sistema com:
 ### Fase 2 - Prescrição e Alertas
 - Fluxo médico de prescrição com motor de regras clínicas.
 
-### Fase 3 - Anamnese IA
-- Geração de resumo clínico, evidências e tomada de decisão registrada.
+### Fase 3 - Consolidação Clínica
+- Geração de resumo clínico estruturado, evidências e tomada de decisão registrada.
 
 ### Fase 4 - Robustez
 - Compliance, auditoria avançada, testes de carga e monitoramento.
@@ -288,7 +378,7 @@ Criar um sistema com:
 - [ ] CK-UX-002 Wireframe dashboard médico.
 - [ ] CK-UX-003 Wireframe dashboard paciente.
 - [ ] CK-UX-004 Fluxo de prescrição com alertas.
-- [ ] CK-UX-005 Tela de anamnese IA com explicabilidade.
+- [ ] CK-UX-005 Tela de resumo clínico estruturado com evidências e lacunas.
 - [ ] CK-UX-006 Estados de erro/carregamento/sucesso em todas as telas.
 - [ ] CK-UX-007 Definição de acessibilidade mínima (contraste, teclado, foco).
 
@@ -300,7 +390,7 @@ Criar um sistema com:
 - [x] CK-FE-005 Busca e abertura de prontuário do paciente.
 - [x] CK-FE-006 Formulário de prescrição (medicamento/dose/frequência/duração).
 - [x] CK-FE-007 Exibição de alertas por severidade.
-- [x] CK-FE-008 Tela de anamnese IA estruturada.
+- [x] CK-FE-008 Tela de anamnese estruturada e resumo clínico.
 - [x] CK-FE-009 Registro da decisão médica por alerta.
 - [x] CK-FE-010 Dashboard paciente com prescrições e orientações.
 - [x] CK-FE-011 Atualização de histórico permitido ao paciente.
@@ -313,7 +403,7 @@ Criar um sistema com:
 - [x] CK-BE-004 CRUD de prontuário e histórico clínico.
 - [x] CK-BE-005 CRUD de prescrição e itens da prescrição.
 - [x] CK-BE-006 Endpoint de execução da análise clínica.
-- [x] CK-BE-007 Endpoint de anamnese IA.
+- [x] CK-BE-007 Endpoint de anamnese estruturada e consolidação clínica.
 - [x] CK-BE-008 Endpoint de decisão médica (aceitar/revisar/ignorar).
 - [x] CK-BE-009 Endpoint de consulta de auditoria.
 - [x] CK-BE-010 Tratamento padronizado de erros e validação de schema.
@@ -326,15 +416,20 @@ Criar um sistema com:
 - [x] CK-DB-005 Seeds com dados fictícios consistentes.
 - [ ] CK-DB-006 Política de backup/restore testada.
 
-### 16.7 Regras Clínicas + IA
+### 16.7 Regras Clínicas + Consolidação
 - [~] CK-AI-001 Definir contrato de entrada (dados clínicos mínimos).
+- [ ] CK-AI-001A Formalizar schema estruturado da anamnese por bloco clínico.
+- [ ] CK-AI-001B Definir obrigatoriedade de `altura`, `peso` e cálculo de `IMC`.
+- [ ] CK-AI-001B1 Definir fórmula, arredondamento e validações mínimas para cálculo automático de `IMC`.
+- [ ] CK-AI-001C Remover pergunta manual de sexo/gênero da anamnese e usar `sexo biológico` do perfil.
+- [ ] CK-AI-001D Consolidar no backend os blocos de perfil, anamnese, prontuário e prescrição para exibição no dashboard.
 - [x] CK-AI-002 Implementar regras de alergia.
 - [x] CK-AI-003 Implementar regras de interação medicamentosa.
 - [x] CK-AI-004 Implementar regras por comorbidade e fatores de risco.
 - [x] CK-AI-005 Definir schema da anamnese estruturada de saída.
-- [ ] CK-AI-006 Integrar modelo de IA para síntese.
+- [ ] CK-AI-006 Implementar resumo clínico determinístico no backend para o dashboard médico.
 - [x] CK-AI-007 Implementar pós-validação da saída.
-- [x] CK-AI-008 Persistir input/output/versionamento da IA.
+- [x] CK-AI-008 Persistir input/output/versionamento da consolidação.
 - [~] CK-AI-009 Exibir evidências e justificativas por alerta.
 - [x] CK-AI-010 Criar testes de regressão para regras clínicas.
 
@@ -380,7 +475,7 @@ Criar um sistema com:
 ## 17. Controle Operacional de Sprint (modelo)
 
 ### 17.1 Sprint atual
-- Objetivo: Iniciar backend MVP com auth, prontuário, prescrição, análise clínica, anamnese IA e auditoria.
+- Objetivo: Iniciar backend MVP com auth, prontuário, prescrição, análise clínica, anamnese estruturada e auditoria.
 - Data de início: 2026-03-04
 - Data de fim: 2026-03-11
 - Responsáveis: João + Codex
@@ -393,7 +488,7 @@ Criar um sistema com:
 - [x] Endpoint de análise clínica com regra de alergia e duplicidade implementado.
 - [x] CRUD de prontuário com histórico de alterações implementado.
 - [x] CRUD de prescrição (listar, detalhar, atualizar e cancelar) implementado.
-- [x] Endpoint dedicado de anamnese IA implementado (`GET /ai/anamnesis/:prescriptionId`).
+- [x] Endpoint dedicado de anamnese estruturada implementado.
 - [x] Endpoint de decisão médica por alerta com justificativa obrigatória para crítico.
 - [x] Endpoint de auditoria (`/audit-logs`) implementado.
 - [x] Regras clínicas expandidas para interação medicamentosa e comorbidade.
@@ -404,7 +499,7 @@ Criar um sistema com:
 - [x] Frontend Next.js + TypeScript criado em `frontend-next` com build e lint funcionando.
 - [x] UI-01 implementada (`/login`) com login/cadastro, persistência de sessão e redirecionamento por perfil.
 - [x] Guardas de rota por perfil implementadas via `middleware.ts` + `useAuthRedirect`.
-- [x] UI-02/UI-03/UI-04/UI-05 implementadas (dashboard médico, prontuário, prescrição com alertas e anamnese IA).
+- [x] UI-02/UI-03/UI-04/UI-05 implementadas (dashboard médico, prontuário, prescrição com alertas e anamnese estruturada).
 - [x] UI-06/UI-07/UI-08 implementadas (dashboard paciente, perfil/histórico, auditoria admin).
 - [x] Dashboard do paciente ajustado para integração estrita com API real (sem mocks), com tentativa de `/patients/me/prescriptions` e fallback para `/prescriptions`.
 - [x] Backend expôs endpoint dedicado para paciente `/patients/me/prescriptions` (sem fallback).
@@ -431,6 +526,7 @@ Criar um sistema com:
 - [x] Conectar definitivamente as rotas de negócio ao MySQL via Sequelize (substituindo store em memória).
 - [~] Aumentar cobertura de testes unitários e de integração dos endpoints críticos.
 - [x] Ajustar autorização de leitura de prescrições para perfil `patient` (endpoint dedicado `/patients/me/prescriptions`).
+- [ ] Revisar roteiro da anamnese para incluir antropometria, sinais vitais e perguntas condicionais por sexo biológico vindo do perfil.
 
 ### 17.7 Passo a passo técnico (execução real)
 - [x] Passo 01: Subir MySQL em Docker e validar conexão (`/db/health`).
@@ -453,13 +549,14 @@ Criar um sistema com:
 |---|---|---|---|---|
 | RF-001 | Cadastro com perfil | `backend/src/routes/auth-routes.ts` | [x] | Fluxo persistido em MySQL via Sequelize |
 | RF-020 | Prescrição assistida | `backend/src/routes/prescription-routes.ts` | [x] | CRUD principal + análise + decisão médica |
-| RF-030 | Anamnese IA | `backend/src/routes/ai-routes.ts` | [~] | Endpoint dedicado implementado; integração com modelo externo pendente |
+| RF-030 | Resumo clínico estruturado | `backend/src/routes/ai-routes.ts` | [~] | Endpoint dedicado implementado; falta consolidar a resposta final no dashboard |
+| RF-037 | Reaproveitar sexo biológico do perfil | `frontend-next/src/app/patient/anamnesis/page.tsx` | [~] | Campo já preenchido pelo perfil; falta consolidar no roteiro funcional |
 | RF-043 | Auditoria de ações críticas | `backend/src/services/audit-service.ts` | [x] | Log em auth/prescrição/análise/decisão |
 | RF-023 | Alertas por severidade | `backend/src/services/analysis-service.ts` | [x] | Regras de alergia, duplicidade, interação e comorbidade |
 | RF-002 | Login por e-mail e senha (frontend) | `frontend-next/src/app/login/page.tsx`, `frontend-next/src/components/login-form.tsx` | [x] | Fluxo login/cadastro funcional com validação |
 | RF-003 | Controle de sessão e perfil (frontend) | `frontend-next/src/providers/auth-provider.tsx`, `frontend-next/middleware.ts` | [x] | Persistência de token e guardas por papel |
 | RF-020 | Prescrição com itens (frontend) | `frontend-next/src/components/prescription-form.tsx`, `frontend-next/src/app/doctor/prescriptions/new/page.tsx` | [x] | Formulário com medicamento/dose/frequência/duração/via |
-| RF-030 | Anamnese IA detalhada (frontend) | `frontend-next/src/app/doctor/anamnesis/[prescriptionId]/page.tsx`, `frontend-next/src/components/anamnesis-card.tsx` | [x] | Exibição estruturada (resumo, destaques, limitações) |
+| RF-030 | Resumo clínico detalhado (frontend) | `frontend-next/src/app/doctor/anamnesis/[prescriptionId]/page.tsx`, `frontend-next/src/components/anamnesis-card.tsx` | [x] | Exibição estruturada (resumo, destaques, limitações) |
 | RF-040 | Decisão médica por alerta (frontend) | `frontend-next/src/app/doctor/prescriptions/[id]/page.tsx` | [x] | Ações aceitar/revisar/ignorar com justificativa |
 | RF-050 | Portal paciente - prescrições (frontend) | `frontend-next/src/app/patient/dashboard/page.tsx` | [~] | Tela implementada; backend atual retorna 403 para paciente em `/prescriptions` |
 | RF-011 | Atualização de histórico clínico (frontend) | `frontend-next/src/app/patient/profile/page.tsx` | [x] | Edição de alergias/condições/medicação via `PATCH /patients/:id/record` |
@@ -479,5 +576,5 @@ Uma funcionalidade só é considerada pronta quando:
 
 ## 20. Observações Finais
 - Este sistema é suporte à decisão clínica, não substituição do médico.
-- A camada de IA deve ser sempre explicável e auditável.
+- A consolidação clínica do backend deve ser sempre explicável e auditável.
 - Este checklist deve ser atualizado continuamente a cada sprint.
