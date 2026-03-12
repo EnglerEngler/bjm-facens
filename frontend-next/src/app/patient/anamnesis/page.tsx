@@ -3,10 +3,16 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
 import { apiRequest } from "@/lib/api-client";
 import { anamnesisBlocks, shouldDisplayQuestion } from "@/lib/anamnesis-questionnaire";
 import type { Patient, PatientAnamnesis } from "@/types/domain";
+
+type FeedbackState = {
+  kind: "success" | "error";
+  message: string;
+};
 
 const parseDecimal = (value: string) => {
   const normalized = value.replace(",", ".").trim();
@@ -35,12 +41,14 @@ const formatBiologicalSex = (value?: string | null) => {
 
 export default function PatientAnamnesisPage() {
   useAuthRedirect();
+  const router = useRouter();
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [patientProfile, setPatientProfile] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackState | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const bodyMassIndex = useMemo(() => calculateBodyMassIndex(answers.height ?? "", answers.weight ?? ""), [answers.height, answers.weight]);
 
   const visibleQuestions = useMemo(
@@ -66,12 +74,16 @@ export default function PatientAnamnesisPage() {
         ]);
         const biologicalSex = profile.biologicalSex ?? "";
         setPatientProfile(profile);
+        setLastSavedAt(payload.updatedAt ?? null);
         setAnswers({
           ...(payload.answers ?? {}),
           ...(biologicalSex ? { biological_sex: biologicalSex } : {}),
         });
       } catch (err) {
-        setStatus(err instanceof Error ? err.message : "Falha ao carregar anamnese.");
+        setFeedback({
+          kind: "error",
+          message: err instanceof Error ? err.message : "Falha ao carregar anamnese.",
+        });
       } finally {
         setLoading(false);
       }
@@ -83,7 +95,7 @@ export default function PatientAnamnesisPage() {
   const saveAnamnesis = async () => {
     try {
       setSaving(true);
-      setStatus(null);
+      setFeedback(null);
       const payload = await apiRequest<PatientAnamnesis>("/patients/me/anamnesis", {
         method: "PUT",
         body: JSON.stringify({
@@ -95,9 +107,13 @@ export default function PatientAnamnesisPage() {
         }),
       });
       setAnswers(payload.answers ?? {});
-      setStatus("Anamnese atualizada com sucesso.");
+      setLastSavedAt(payload.updatedAt ?? new Date().toISOString());
+      router.push("/patient/dashboard");
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Falha ao salvar anamnese.");
+      setFeedback({
+        kind: "error",
+        message: err instanceof Error ? err.message : "Falha ao salvar anamnese.",
+      });
     } finally {
       setSaving(false);
     }
@@ -140,6 +156,11 @@ export default function PatientAnamnesisPage() {
                 <small>Vem do perfil do paciente</small>
               </article>
               <article className="doctor-fact-card">
+                <span className="doctor-fact-label">Ultima atualizacao</span>
+                <strong>{lastSavedAt ? new Date(lastSavedAt).toLocaleString() : "Ainda nao salva"}</strong>
+                <small>Confirmacao do ultimo salvamento</small>
+              </article>
+              <article className="doctor-fact-card">
                 <span className="doctor-fact-label">IMC atual</span>
                 <strong>{bodyMassIndex || "Aguardando altura e peso"}</strong>
                 <small>Calculado automaticamente</small>
@@ -152,7 +173,11 @@ export default function PatientAnamnesisPage() {
               </div>
             </div>
 
-            {status && <p className="muted">{status}</p>}
+            {feedback?.kind === "error" && (
+              <p className="error" role="alert">
+                {feedback.message}
+              </p>
+            )}
           </section>
 
           <div className="doctor-anamnesis-sections">
@@ -219,6 +244,7 @@ export default function PatientAnamnesisPage() {
           </section>
         </>
       )}
+
     </main>
   );
 }
