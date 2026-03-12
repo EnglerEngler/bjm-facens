@@ -1,6 +1,8 @@
 export interface AnamnesisQuestion {
   id: string;
   prompt: string;
+  inputType?: "text" | "textarea";
+  readOnly?: boolean;
   conditionalOn?: {
     id: string;
     match: string[];
@@ -15,138 +17,104 @@ export interface AnamnesisBlock {
 
 export const anamnesisBlocks: AnamnesisBlock[] = [
   {
-    id: "medical_history",
-    title: "Bloco 1: Histórico Médico",
+    id: "symptoms",
+    title: "Sintomas",
     questions: [
-      { id: "chronic_disease", prompt: "Você tem ou já teve alguma doença crônica?" },
-      { id: "surgery_history", prompt: "Você já passou por alguma cirurgia?" },
-      { id: "known_allergies", prompt: "Você possui alguma alergia?" },
-      { id: "covid_infection", prompt: "Você já contraiu COVID-19?" },
-      { id: "covid_vaccination", prompt: "Você se vacinou contra COVID-19?" },
-      { id: "current_medication_use", prompt: "Você faz uso de algum medicamento atualmente?" },
-      { id: "medication_allergy", prompt: "Você tem alergia a algum medicamento?" },
+      { id: "main_complaint", prompt: "Qual é a sua queixa principal?" },
+      { id: "symptoms_started_at", prompt: "Quando isso começou?" },
+      { id: "symptoms_progression", prompt: "Como os sintomas evoluíram desde o início?" },
+    ],
+  },
+  {
+    id: "medical_history",
+    title: "Histórico médico",
+    questions: [
+      { id: "diagnosed_conditions", prompt: "Você tem alguma doença ou condição de saúde já diagnosticada?" },
+      { id: "current_medications", prompt: "Você usa algum medicamento atualmente?" },
+      { id: "surgeries_or_hospitalizations", prompt: "Já fez alguma cirurgia ou já ficou internado?" },
+      { id: "family_history", prompt: "Existe histórico de doenças importantes na sua família?" },
     ],
   },
   {
     id: "lifestyle",
-    title: "Bloco 2: Estilo de Vida",
+    title: "Estilo de vida",
     questions: [
-      { id: "smoking", prompt: "Você é fumante?" },
-      { id: "smoking_duration", prompt: "Por quanto tempo você fumou? (meses)", conditionalOn: { id: "smoking", match: ["sim"] } },
-      { id: "alcohol_consumption", prompt: "Você consome bebida alcoólica?" },
-      {
-        id: "alcohol_type",
-        prompt: "Qual tipo de bebida você consome?",
-        conditionalOn: { id: "alcohol_consumption", match: ["sim"] },
-      },
-      {
-        id: "alcohol_frequency",
-        prompt: "Com que frequência você consome?",
-        conditionalOn: { id: "alcohol_consumption", match: ["sim"] },
-      },
-      { id: "diet", prompt: "Você segue algum tipo de dieta específica?" },
-      { id: "diet_type", prompt: "Qual dieta você segue?", conditionalOn: { id: "diet", match: ["sim"] } },
-      { id: "diet_duration", prompt: "Há quanto tempo você segue essa dieta?", conditionalOn: { id: "diet", match: ["sim"] } },
-      { id: "meals_per_day", prompt: "Quais refeições você faz ao longo do dia?" },
-      { id: "meal_restrictions", prompt: "Em cada refeição do dia, quais alimentos você não costuma consumir?" },
-      { id: "food_allergy", prompt: "Você tem alergia a algum alimento?" },
-      { id: "liquids_during_meals", prompt: "Você consome líquidos durante as refeições?" },
-      { id: "daily_hydration", prompt: "Quais tipos de líquidos você consome ao longo do dia?" },
-      { id: "exercise", prompt: "Você pratica exercícios físicos?" },
-      { id: "exercise_frequency", prompt: "Quantas vezes por semana você pratica?" },
-      { id: "exercise_type", prompt: "Quais exercícios você pratica?" },
-      { id: "sun_exposure", prompt: "Você costuma se expor ao sol regularmente?" },
-      { id: "sun_exposure_frequency", prompt: "Quantas vezes por semana você toma sol?" },
-      { id: "sleep_quality", prompt: "Qual nota você daria para a qualidade do seu sono?" },
-      { id: "sleep_hours", prompt: "Quantas horas você dorme por noite?" },
-      { id: "sleep_rem", prompt: "Porcentagem de sono REM" },
-      { id: "sleep_deep", prompt: "Porcentagem de sono profundo" },
-      { id: "relaxation_activity", prompt: "Você pratica alguma atividade para relaxar?" },
-      { id: "relaxation_activity_type", prompt: "Quais atividades de relaxamento você pratica?" },
-      { id: "daily_routine", prompt: "Como você descreveria seu dia a dia?" },
-      { id: "health_objectives", prompt: "Quais seus objetivos na saúde?" },
-      { id: "supplements", prompt: "Quais suplementos você consome?" },
+      { id: "smoking", prompt: "Você fuma?", inputType: "text" },
+      { id: "alcohol_consumption", prompt: "Você consome bebida alcoólica?", inputType: "text" },
+      { id: "physical_activity", prompt: "Você pratica atividade física?" },
+      { id: "sleep_quality", prompt: "Como está seu sono?" },
+      { id: "diet_quality", prompt: "Como está sua alimentação?" },
     ],
   },
   {
-    id: "symptoms",
-    title: "Bloco 3: Sintomas",
+    id: "body_measurements",
+    title: "Medidas corporais",
     questions: [
-      { id: "pain_discomfort", prompt: "Você sente algum tipo de dor ou desconforto?" },
-      { id: "bowel_regular", prompt: "Seu intestino funciona regularmente todos os dias?" },
-      { id: "urination_difficulty", prompt: "Você tem dificuldade para urinar?" },
-      { id: "night_urination", prompt: "Você acorda durante a noite para urinar?" },
+      { id: "height", prompt: "Qual é a sua altura?", inputType: "text" },
+      { id: "weight", prompt: "Qual é o seu peso atual?", inputType: "text" },
+      { id: "body_mass_index", prompt: "IMC calculado automaticamente", inputType: "text", readOnly: true },
     ],
   },
   {
-    id: "gender",
-    title: "Bloco 4: Gênero",
+    id: "allergies",
+    title: "Alergias",
     questions: [
-      { id: "biological_sex", prompt: "Qual é o seu sexo biológico? (masculino/feminino)" },
+      { id: "has_allergies", prompt: "Você tem alguma alergia?" },
       {
-        id: "male_erection_quality",
-        prompt: "Você está satisfeito com a qualidade das suas ereções?",
+        id: "allergy_details",
+        prompt: "Se sim, qual alergia e qual reação ela causa?",
+        conditionalOn: { id: "has_allergies", match: ["sim"] },
+      },
+    ],
+  },
+  {
+    id: "female_specific",
+    title: "Perguntas específicas",
+    questions: [
+      {
+        id: "female_pregnancy_possibility",
+        prompt: "Você está grávida ou existe possibilidade de gestação?",
+        conditionalOn: { id: "biological_sex", match: ["feminino"] },
+      },
+      {
+        id: "female_menstruation_regular",
+        prompt: "Sua menstruação está regular?",
+        conditionalOn: { id: "biological_sex", match: ["feminino"] },
+      },
+      {
+        id: "female_last_menstruation",
+        prompt: "Qual foi a data da sua última menstruação?",
+        conditionalOn: { id: "biological_sex", match: ["feminino"] },
+      },
+      {
+        id: "female_menopause",
+        prompt: "Você está na menopausa?",
+        conditionalOn: { id: "biological_sex", match: ["feminino"] },
+      },
+      {
+        id: "female_gynecological_symptoms",
+        prompt: "Tem algum sintoma ginecológico relevante?",
+        conditionalOn: { id: "biological_sex", match: ["feminino"] },
+      },
+      {
+        id: "male_urination_difficulty",
+        prompt: "Você tem dificuldade para urinar?",
         conditionalOn: { id: "biological_sex", match: ["masculino"] },
       },
       {
-        id: "male_complete_intercourse",
-        prompt: "Você consegue completar a relação sexual?",
+        id: "male_weak_urine_stream",
+        prompt: "Percebe jato urinário fraco?",
         conditionalOn: { id: "biological_sex", match: ["masculino"] },
       },
       {
-        id: "male_premature_ejaculation",
-        prompt: "Você tem ejaculação precoce?",
+        id: "male_night_urination",
+        prompt: "Acorda à noite para urinar com frequência?",
         conditionalOn: { id: "biological_sex", match: ["masculino"] },
       },
       {
-        id: "male_spontaneous_erections",
-        prompt: "Você tem ereções espontâneas durante a noite?",
+        id: "male_urological_symptoms",
+        prompt: "Tem algum desconforto urológico relevante?",
         conditionalOn: { id: "biological_sex", match: ["masculino"] },
-      },
-      {
-        id: "male_testicular_trauma",
-        prompt: "Você tem histórico de trauma testicular ou genital?",
-        conditionalOn: { id: "biological_sex", match: ["masculino"] },
-      },
-      {
-        id: "female_regular_cycle",
-        prompt: "Seu ciclo menstrual é regular?",
-        conditionalOn: { id: "biological_sex", match: ["feminino"] },
-      },
-      {
-        id: "female_cycle_short",
-        prompt: "Seu ciclo tem duração menor que 24 dias?",
-        conditionalOn: { id: "biological_sex", match: ["feminino"] },
-      },
-      {
-        id: "female_menstrual_symptoms",
-        prompt: "Você apresenta sintomas durante a menstruação?",
-        conditionalOn: { id: "biological_sex", match: ["feminino"] },
-      },
-      {
-        id: "female_contraceptive",
-        prompt: "Você usa anticoncepcional?",
-        conditionalOn: { id: "biological_sex", match: ["feminino"] },
-      },
-      {
-        id: "female_mammography",
-        prompt: "Você já fez mamografia?",
-        conditionalOn: { id: "biological_sex", match: ["feminino"] },
-      },
-      {
-        id: "female_pregnant",
-        prompt: "Você está grávida?",
-        conditionalOn: { id: "biological_sex", match: ["feminino"] },
-      },
-      {
-        id: "female_cycle_phase",
-        prompt: "Em qual fase do ciclo menstrual você está?",
-        conditionalOn: { id: "biological_sex", match: ["feminino"] },
-      },
-      {
-        id: "female_planning_pregnancy",
-        prompt: "Você está planejando engravidar?",
-        conditionalOn: { id: "biological_sex", match: ["feminino"] },
       },
     ],
   },

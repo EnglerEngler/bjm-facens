@@ -21,6 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const canAccessClinicAdminArea = session?.user.role === "clinic_admin";
   const canAccessAudit = canAccessAdminArea || canAccessClinicAdminArea;
   const canAccessLogin = !session && !hideGuestHeaderLoginLink;
+  const profilePath = session?.user.role === "patient" ? "/patient/profile" : null;
   const hasMenuEntries =
     canAccessDoctorDashboard || canAccessPatientDashboard || canAccessAdminArea || canAccessClinicAdminArea || canAccessLogin;
   const userName = session?.user.name?.trim() || "";
@@ -84,13 +85,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
           <div className="header-right">
             {session && (
-              <div className="user-chip" aria-label={`Usuario: ${userName}`}>
-                <span className="user-avatar">{userInitials || "U"}</span>
-                <span className="user-info">
-                  <strong>{userName}</strong>
-                  <small>{userRoleLabel}</small>
-                </span>
-              </div>
+              <>
+                {profilePath ? (
+                  <Link href={profilePath} className="user-chip user-chip-link" aria-label={`Abrir perfil de ${userName}`}>
+                    <span className="user-avatar">{userInitials || "U"}</span>
+                    <span className="user-info">
+                      <strong>{userName}</strong>
+                      <small>{userRoleLabel}</small>
+                    </span>
+                  </Link>
+                ) : (
+                  <div className="user-chip" aria-label={`Usuario: ${userName}`}>
+                    <span className="user-avatar">{userInitials || "U"}</span>
+                    <span className="user-info">
+                      <strong>{userName}</strong>
+                      <small>{userRoleLabel}</small>
+                    </span>
+                  </div>
+                )}
+              </>
             )}
             {hasMenuEntries && (
               <div className="app-menu" ref={menuRef}>
@@ -120,6 +133,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {canAccessPatientDashboard && (
                     <Link href="/patient/anamnesis" className="menu-link">
                       Anamnese
+                    </Link>
+                  )}
+                  {canAccessPatientDashboard && (
+                    <Link href="/patient/profile" className="menu-link">
+                      Meu Perfil
                     </Link>
                   )}
                   {canAccessAdminArea && (

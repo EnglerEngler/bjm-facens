@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { apiRequest } from "@/lib/api-client";
 import { clearSession, readSession, writeSession } from "@/lib/auth-storage";
-import type { AuthSession, UserRole } from "@/types/domain";
+import type { AuthSession, User, UserRole } from "@/types/domain";
 
 interface AuthContextValue {
   session: AuthSession | null;
@@ -17,6 +17,7 @@ interface AuthContextValue {
     clinicName?: string;
     clinicJoinCode?: string;
   }) => Promise<void>;
+  updateSessionUser: (user: User) => void;
   logout: () => void;
 }
 
@@ -58,6 +59,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const updateSessionUser = (user: User) => {
+    setSession((current) => {
+      if (!current) return current;
+      const nextSession = { ...current, user };
+      writeSession(nextSession);
+      return nextSession;
+    });
+  };
+
   const logout = () => {
     clearSession();
     setSession(null);
@@ -69,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       login,
       register,
+      updateSessionUser,
       logout,
     }),
     [session, loading],

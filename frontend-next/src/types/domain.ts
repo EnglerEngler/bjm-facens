@@ -27,6 +27,19 @@ export interface Patient {
   userId: string;
   clinicId?: string;
   birthDate?: string;
+  biologicalSex?: "masculino" | "feminino" | null;
+  phone?: string | null;
+  addressZipCode?: string | null;
+  addressStreet?: string | null;
+  addressNumber?: string | null;
+  addressComplement?: string | null;
+  addressNeighborhood?: string | null;
+  addressCity?: string | null;
+  addressState?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  onboardingCompleted?: boolean;
+  onboardingCompletedAt?: string | null;
   record?: MedicalRecord | null;
 }
 
@@ -120,6 +133,7 @@ export interface AdminDashboardPerson {
   userId: string;
   name: string;
   email: string;
+  role: "doctor" | "patient";
 }
 
 export interface AdminDashboardPatient extends AdminDashboardPerson {
@@ -132,4 +146,13 @@ export interface AdminDashboardClinic {
   joinCode: string;
   doctors: AdminDashboardPerson[];
   patients: AdminDashboardPatient[];
+}
+
+export interface ClinicManagedUser {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  role: "doctor" | "patient";
+  birthDate: string | null;
 }

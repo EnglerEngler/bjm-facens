@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
+import { apiRequest } from "@/lib/api-client";
 import { useAuth } from "@/providers/auth-provider";
 import { roleDefaultPath } from "@/lib/role-utils";
-import type { UserRole } from "@/types/domain";
+import type { Patient, UserRole } from "@/types/domain";
 
 const loginSchema = z.object({
   email: z.string().email("E-mail inválido."),
@@ -71,6 +72,12 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const resolvePostLoginPath = async (userRole: UserRole) => {
+    if (userRole !== "patient") return roleDefaultPath(userRole);
+    const profile = await apiRequest<Patient>("/patients/me/profile");
+    return profile.onboardingCompleted ? "/patient/dashboard" : "/patient/onboarding";
+  };
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -80,12 +87,12 @@ export function LoginForm() {
       if (mode === "login") {
         const parsed = loginSchema.parse({ email, password });
         const session = await login(parsed.email, parsed.password);
-        router.push(roleDefaultPath(session.user.role));
+        router.push(await resolvePostLoginPath(session.user.role));
       } else {
         const parsed = registerSchema.parse({ name, email, password, role, clinicName, clinicJoinCode });
         await register(parsed);
         const session = await login(parsed.email, parsed.password);
-        router.push(roleDefaultPath(session.user.role));
+        router.push(await resolvePostLoginPath(session.user.role));
       }
     } catch (err) {
       setError(getReadableErrorMessage(err));
