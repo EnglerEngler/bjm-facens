@@ -103,28 +103,31 @@ export function LoginForm() {
 
   return (
     <div className="card login-form-card">
-      <h2>{mode === "login" ? "Entrar" : "Criar conta"}</h2>
-      <form onSubmit={submit}>
+      <div className="login-form-header">
+        <h2>{mode === "login" ? "Entrar" : "Criar conta"}</h2>
+        <p>{mode === "login" ? "Acesse sua conta para continuar." : "Preencha os dados para criar sua conta."}</p>
+      </div>
+      <form onSubmit={submit} noValidate>
         {mode === "register" && (
-          <label>
-            Nome
+          <label className="login-field">
+            <span>Nome</span>
             <input value={name} onChange={(e) => setName(e.target.value)} />
           </label>
         )}
 
-        <label>
-          E-mail
-          <input value={email} onChange={(e) => setEmail(e.target.value)} />
+        <label className="login-field">
+          <span>E-mail</span>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
 
-        <label>
-          Senha
+        <label className="login-field">
+          <span>Senha</span>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
 
         {mode === "register" && (
-          <label>
-            Perfil
+          <label className="login-field">
+            <span>Perfil</span>
             <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
               <option value="doctor">Médico</option>
               <option value="patient">Paciente</option>
@@ -135,15 +138,15 @@ export function LoginForm() {
         )}
 
         {mode === "register" && (role === "doctor" || role === "patient") && (
-          <label>
-            Código da Clínica
+          <label className="login-field">
+            <span>Código da Clínica</span>
             <input value={clinicJoinCode} onChange={(e) => setClinicJoinCode(e.target.value)} />
           </label>
         )}
 
         {mode === "register" && role === "clinic_admin" && (
-          <label>
-            Nome da Clínica
+          <label className="login-field">
+            <span>Nome da Clínica</span>
             <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} />
           </label>
         )}
@@ -164,7 +167,7 @@ export function LoginForm() {
           </button>
         </div>
 
-        {error && <p className="error">{error}</p>}
+        {error && <p className="error login-form-error">{error}</p>}
       </form>
     </div>
   );
