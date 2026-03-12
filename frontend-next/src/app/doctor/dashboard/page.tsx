@@ -8,6 +8,26 @@ import { apiRequest } from "@/lib/api-client";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
 import type { Patient } from "@/types/domain";
 
+const formatDate = (value?: string | null) => {
+  if (!value) return "Nascimento pendente";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("pt-BR");
+};
+
+const buildPatientSearch = (patient: Patient) =>
+  [
+    patient.id,
+    patient.userId,
+    patient.birthDate ?? "",
+    patient.clinicId ?? "",
+    patient.record?.allergies.join(" ") ?? "",
+    patient.record?.conditions.join(" ") ?? "",
+    patient.record?.currentMedications.join(" ") ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+
 export default function DoctorDashboardPage() {
   useAuthRedirect();
 
@@ -20,6 +40,7 @@ export default function DoctorDashboardPage() {
     const run = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await apiRequest<Patient[]>("/patients");
         setPatients(data);
       } catch (err) {
@@ -32,51 +53,66 @@ export default function DoctorDashboardPage() {
     run();
   }, []);
 
-  const filtered = useMemo(() => {
-    if (!query.trim()) return patients;
+  const filteredPatients = useMemo(() => {
     const text = query.trim().toLowerCase();
-    return patients.filter((patient) => patient.id.toLowerCase().includes(text) || patient.userId.toLowerCase().includes(text));
+    if (!text) return patients;
+    return patients.filter((patient) => buildPatientSearch(patient).includes(text));
   }, [patients, query]);
 
-  const criticalPatients = patients.filter((item) => (item.record?.allergies.length ?? 0) > 0).length;
-
   return (
-    <main>
-      <h1>Dashboard Médico</h1>
-      <div className="grid grid-2">
-        <section className="card">
-          <h3>Pacientes vinculados</h3>
-          <strong>{patients.length}</strong>
-        </section>
-        <section className="card">
-          <h3>Com alergias registradas</h3>
-          <strong>{criticalPatients}</strong>
-        </section>
-      </div>
+    <main className="doctor-dashboard">
+      <section className="doctor-hero doctor-hero-compact">
+        <div>
+          <span className="doctor-kicker">Painel do medico</span>
+          <h1>Buscar paciente e abrir prontuario</h1>
+          <p className="muted">Pesquise por qualquer termo disponivel do paciente e siga direto para o prontuario.</p>
+        </div>
+        <Link href="/doctor/prescriptions/new" className="doctor-action-button doctor-action-button-primary">
+          Nova prescricao
+        </Link>
+      </section>
 
-      <section className="card">
-        <h3>Busca de prontuário</h3>
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por ID do paciente ou usuário" />
+      <section className="doctor-search card">
+        <div className="doctor-search-heading">
+          <div>
+            <h2>Buscar paciente</h2>
+            <p className="muted">ID do perfil, usuario, nascimento, alergias, condicoes ou medicamentos em uso.</p>
+          </div>
+          <span className="doctor-result-chip">{filteredPatients.length} paciente(s)</span>
+        </div>
+
+        <label htmlFor="doctor-dashboard-search" className="sr-only">
+          Buscar paciente
+        </label>
+        <input
+          id="doctor-dashboard-search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Ex.: patient_, user_, dipirona, hipertensao, 1990"
+          className="doctor-search-input"
+        />
+
         {loading && <p>Carregando pacientes...</p>}
         {error && <p className="error">{error}</p>}
+
         {!loading && !error && (
-          <div className="grid" style={{ marginTop: 12 }}>
-            {filtered.map((patient) => (
-              <article key={patient.id} className="card">
-                <div className="between">
-                  <div>
-                    <strong>{patient.id}</strong>
-                    <p className="muted">Usuário: {patient.userId}</p>
-                  </div>
-                  <div className="row">
-                    <Link href={`/doctor/patients/${patient.id}`}>Abrir prontuário</Link>
-                    <Link href={`/doctor/patients/${patient.id}/anamnesis`}>Ver anamnese</Link>
-                    <Link href={`/doctor/prescriptions/new?patientId=${patient.id}`}>Nova prescrição</Link>
-                  </div>
+          <div className="doctor-patient-list">
+            {filteredPatients.map((patient) => (
+              <article key={patient.id} className="doctor-patient-row">
+                <div className="doctor-patient-row-main">
+                  <strong>{patient.id}</strong>
+                  <p className="muted">Usuario: {patient.userId}</p>
                 </div>
+                <div className="doctor-patient-row-tags">
+                  <span>{formatDate(patient.birthDate)}</span>
+                  <span>{patient.record?.allergies.length ? `${patient.record.allergies.length} alergia(s)` : "Sem alergias"}</span>
+                </div>
+                <Link href={`/doctor/patients/${patient.id}`} className="doctor-action-button doctor-action-button-primary">
+                  Abrir prontuario
+                </Link>
               </article>
             ))}
-            {filtered.length === 0 && <p className="muted">Nenhum paciente encontrado.</p>}
+            {filteredPatients.length === 0 && <p className="muted">Nenhum paciente encontrado para a busca atual.</p>}
           </div>
         )}
       </section>

@@ -5,22 +5,65 @@ export const dynamic = "force-dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "@/lib/api-client";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
-import type { AdminDashboardClinic } from "@/types/domain";
+import type { AdminDashboardClinic, ClinicManagedUser } from "@/types/domain";
+
+type ManagedClinicUser = ClinicManagedUser & {
+  clinicId: string;
+  clinicName: string;
+  joinCode: string;
+};
+
+type CreateUserForm = {
+  name: string;
+  email: string;
+  password: string;
+  role: "doctor" | "patient";
+  birthDate: string;
+};
+
+const formatDate = (value?: string | null) => {
+  if (!value) return "Nao informado";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("pt-BR");
+};
+
+const emptyCreateForm: CreateUserForm = {
+  name: "",
+  email: "",
+  password: "",
+  role: "doctor",
+  birthDate: "",
+};
 
 export default function ClinicDashboardPage() {
   useAuthRedirect();
 
   const [clinics, setClinics] = useState<AdminDashboardClinic[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateUserForm>(emptyCreateForm);
+  const [editForm, setEditForm] = useState({ name: "", email: "", password: "", birthDate: "" });
 
   useEffect(() => {
     const run = async () => {
       try {
         setLoading(true);
+        setError(null);
         const payload = await apiRequest<AdminDashboardClinic[]>("/admin/dashboard");
         setClinics(payload);
+        const firstUser = payload.flatMap((clinic) => [
+          ...clinic.doctors.map((doctor) => doctor.userId),
+          ...clinic.patients.map((patient) => patient.userId),
+        ])[0];
+        setSelectedUserId(firstUser ?? null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Falha ao carregar dashboard da clinica.");
       } finally {
@@ -31,30 +74,36 @@ export default function ClinicDashboardPage() {
     run();
   }, []);
 
-  const filteredClinics = useMemo(() => {
+  const clinic = clinics[0] ?? null;
+
+  const users = useMemo<ManagedClinicUser[]>(() => {
+    return clinics.flatMap((clinicItem) => [
+      ...clinicItem.doctors.map((doctor) => ({
+        ...doctor,
+        birthDate: null,
+        clinicId: clinicItem.clinicId,
+        clinicName: clinicItem.clinicName,
+        joinCode: clinicItem.joinCode,
+      })),
+      ...clinicItem.patients.map((patient) => ({
+        ...patient,
+        clinicId: clinicItem.clinicId,
+        clinicName: clinicItem.clinicName,
+        joinCode: clinicItem.joinCode,
+      })),
+    ]);
+  }, [clinics]);
+
+  const filteredUsers = useMemo(() => {
     const text = query.trim().toLowerCase();
-    if (!text) return clinics;
+    if (!text) return users;
 
-    return clinics
-      .map((clinic) => {
-        const doctors = clinic.doctors.filter((doctor) =>
-          [doctor.name, doctor.email, doctor.userId, doctor.id].some((value) => value.toLowerCase().includes(text)),
-        );
-        const patients = clinic.patients.filter((patient) =>
-          [patient.name, patient.email, patient.userId, patient.id, patient.birthDate ?? ""].some((value) =>
-            value.toLowerCase().includes(text),
-          ),
-        );
-        const clinicMatch = [clinic.clinicName, clinic.joinCode, clinic.clinicId].some((value) =>
-          value.toLowerCase().includes(text),
-        );
-
-        if (clinicMatch) return clinic;
-        if (doctors.length || patients.length) return { ...clinic, doctors, patients };
-        return null;
-      })
-      .filter((item): item is AdminDashboardClinic => item !== null);
-  }, [clinics, query]);
+    return users.filter((user) =>
+      [user.name, user.email, user.userId, user.id, user.birthDate ?? "", user.role, user.clinicName, user.joinCode].some((value) =>
+        value.toLowerCase().includes(text),
+      ),
+    );
+  }, [users, query]);
 
   const totals = useMemo(
     () => ({
@@ -65,108 +114,352 @@ export default function ClinicDashboardPage() {
     [clinics],
   );
 
-  return (
-    <main>
-      <h1>Dashboard da Clínica</h1>
-      <p className="muted">Visão restrita aos dados da sua clínica.</p>
+  const selectedUser = users.find((user) => user.userId === selectedUserId) ?? null;
 
-      <section className="grid grid-2">
-        <article className="card">
-          <p className="muted">Clinicas</p>
-          <strong>{totals.clinics}</strong>
-        </article>
-        <article className="card">
-          <p className="muted">Medicos</p>
-          <strong>{totals.doctors}</strong>
-        </article>
-        <article className="card">
-          <p className="muted">Pacientes</p>
-          <strong>{totals.patients}</strong>
-        </article>
+  useEffect(() => {
+    if (!selectedUser) {
+      setEditForm({ name: "", email: "", password: "", birthDate: "" });
+      return;
+    }
+
+    setEditForm({
+      name: selectedUser.name,
+      email: selectedUser.email,
+      password: "",
+      birthDate: selectedUser.birthDate ?? "",
+    });
+  }, [selectedUser]);
+
+  const upsertManagedUser = (nextUser: ClinicManagedUser, clinicId?: string) => {
+    setClinics((current) =>
+      current.map((clinicItem) => {
+        if (clinicId && clinicItem.clinicId !== clinicId) return clinicItem;
+
+        const doctors = clinicItem.doctors.filter((doctor) => doctor.userId !== nextUser.userId);
+        const patients = clinicItem.patients.filter((patient) => patient.userId !== nextUser.userId);
+
+        if (nextUser.role === "doctor") {
+          doctors.unshift({
+            id: nextUser.id,
+            userId: nextUser.userId,
+            name: nextUser.name,
+            email: nextUser.email,
+            role: "doctor",
+          });
+        } else {
+          patients.unshift({
+            id: nextUser.id,
+            userId: nextUser.userId,
+            name: nextUser.name,
+            email: nextUser.email,
+            role: "patient",
+            birthDate: nextUser.birthDate,
+          });
+        }
+
+        return { ...clinicItem, doctors, patients };
+      }),
+    );
+  };
+
+  const handleCreateUser = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCreateError(null);
+    setFeedback(null);
+
+    try {
+      setCreating(true);
+      const created = await apiRequest<ClinicManagedUser>("/admin/users", {
+        method: "POST",
+        body: JSON.stringify({
+          name: createForm.name,
+          email: createForm.email,
+          password: createForm.password,
+          role: createForm.role,
+          birthDate: createForm.role === "patient" ? createForm.birthDate || null : undefined,
+        }),
+      });
+
+      upsertManagedUser(created, clinic?.clinicId);
+      setCreateForm(emptyCreateForm);
+      setSelectedUserId(created.userId);
+      setFeedback(`${created.role === "doctor" ? "Medico" : "Paciente"} cadastrado com sucesso.`);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Falha ao cadastrar usuario.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleUpdateUser = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedUser) return;
+
+    setEditError(null);
+    setFeedback(null);
+
+    try {
+      setSaving(true);
+      const updated = await apiRequest<ClinicManagedUser>(`/admin/users/${selectedUser.userId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: editForm.name,
+          email: editForm.email,
+          password: editForm.password || undefined,
+          birthDate: selectedUser.role === "patient" ? editForm.birthDate || null : undefined,
+        }),
+      });
+
+      upsertManagedUser(updated, selectedUser.clinicId);
+      setEditForm((current) => ({ ...current, password: "" }));
+      setFeedback("Usuario atualizado com sucesso.");
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Falha ao atualizar usuario.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <main className="doctor-dashboard clinic-dashboard">
+      <section className="doctor-hero clinic-hero">
+        <div>
+          <span className="doctor-kicker">Painel da clinica</span>
+          <h1>Gestao de usuarios da sua operacao clinica</h1>
+          <p className="muted">
+            Cadastre novos medicos e pacientes, revise os dados existentes e mantenha o acesso restrito a sua clinica.
+          </p>
+        </div>
+        <div className="doctor-hero-meta">
+          <span>{clinic?.clinicName ?? "Clinica nao identificada"}</span>
+          <span>Codigo de entrada: {clinic?.joinCode ?? "-"}</span>
+          <span>{filteredUsers.length} resultado(s) na busca</span>
+        </div>
       </section>
 
-      <section className="card">
-        <label htmlFor="clinic-search">Pesquisar medico ou paciente</label>
+      <section className="doctor-search card">
+        <div className="doctor-search-heading">
+          <div>
+            <h2>Equipe e pacientes</h2>
+            <p className="muted">Pesquise por nome, e-mail, role, identificadores ou nascimento.</p>
+          </div>
+        </div>
+
+        <div className="doctor-facts-grid clinic-summary-grid">
+          <article className="doctor-fact-card">
+            <span className="doctor-fact-label">Clinicas visiveis</span>
+            <strong>{totals.clinics}</strong>
+            <small>Escopo atual do admin da clinica</small>
+          </article>
+          <article className="doctor-fact-card">
+            <span className="doctor-fact-label">Medicos</span>
+            <strong>{totals.doctors}</strong>
+            <small>Perfis de prescritores cadastrados</small>
+          </article>
+          <article className="doctor-fact-card">
+            <span className="doctor-fact-label">Pacientes</span>
+            <strong>{totals.patients}</strong>
+            <small>Usuarios acompanhados pela clinica</small>
+          </article>
+        </div>
+
+        <label htmlFor="clinic-dashboard-search" className="sr-only">
+          Buscar usuarios
+        </label>
         <input
-          id="clinic-search"
+          id="clinic-dashboard-search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Ex.: maria@, patient_..."
+          placeholder="Ex.: maria@clinica.com, patient_, doctor, 1990-08-16"
+          className="doctor-search-input"
         />
+
+        {loading && <p>Carregando dashboard...</p>}
+        {error && <p className="error">{error}</p>}
+        {feedback && <p className="success">{feedback}</p>}
+
+        {!loading && !error && (
+          <div className="doctor-search-results">
+            {filteredUsers.map((user) => {
+              const active = user.userId === selectedUserId;
+              return (
+                <button
+                  key={user.userId}
+                  type="button"
+                  className={`doctor-patient-card${active ? " doctor-patient-card-active" : ""}`}
+                  onClick={() => setSelectedUserId(user.userId)}
+                >
+                  <span className="doctor-patient-card-top">
+                    <strong>{user.name}</strong>
+                    <span>{user.role === "doctor" ? "Medico" : formatDate(user.birthDate)}</span>
+                  </span>
+                  <span className="muted">{user.email}</span>
+                  <span className="doctor-patient-card-meta">
+                    {user.role === "doctor" ? "Perfil medico" : "Perfil paciente"} · User {user.userId}
+                  </span>
+                </button>
+              );
+            })}
+            {filteredUsers.length === 0 && <p className="muted">Nenhum usuario encontrado para a busca atual.</p>}
+          </div>
+        )}
       </section>
 
-      {loading && <p>Carregando dashboard...</p>}
-      {error && <p className="error">{error}</p>}
-
-      {!loading && !error && filteredClinics.length === 0 && <p>Nenhum resultado para a busca atual.</p>}
-
-      {!loading &&
-        !error &&
-        filteredClinics.map((clinic) => (
-          <section key={clinic.clinicId} className="card">
-            <div className="between">
-              <h2>{clinic.clinicName}</h2>
-              <span className="muted">Codigo: {clinic.joinCode}</span>
+      <section className="doctor-record-shell">
+        <div className="doctor-record-main clinic-management-grid">
+          <section className="card doctor-record-card">
+            <div className="doctor-record-header">
+              <div>
+                <span className="doctor-section-label">Cadastro</span>
+                <h2>Adicionar usuario</h2>
+                <p className="muted">Crie um novo medico ou paciente diretamente na sua clinica.</p>
+              </div>
             </div>
-            <p className="muted">ID da clinica: {clinic.clinicId}</p>
 
-            <h3>Medicos ({clinic.doctors.length})</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>E-mail</th>
-                  <th>User ID</th>
-                  <th>Perfil ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clinic.doctors.map((doctor) => (
-                  <tr key={doctor.id}>
-                    <td>{doctor.name}</td>
-                    <td>{doctor.email}</td>
-                    <td>{doctor.userId}</td>
-                    <td>{doctor.id}</td>
-                  </tr>
-                ))}
-                {clinic.doctors.length === 0 && (
-                  <tr>
-                    <td colSpan={4}>Nenhum medico cadastrado nesta clinica.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            <form className="clinic-user-form" onSubmit={handleCreateUser}>
+              <label>
+                Nome
+                <input
+                  value={createForm.name}
+                  onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))}
+                />
+              </label>
 
-            <h3>Pacientes ({clinic.patients.length})</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>E-mail</th>
-                  <th>User ID</th>
-                  <th>Perfil ID</th>
-                  <th>Nascimento</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clinic.patients.map((patient) => (
-                  <tr key={patient.id}>
-                    <td>{patient.name}</td>
-                    <td>{patient.email}</td>
-                    <td>{patient.userId}</td>
-                    <td>{patient.id}</td>
-                    <td>{patient.birthDate ?? "-"}</td>
-                  </tr>
-                ))}
-                {clinic.patients.length === 0 && (
-                  <tr>
-                    <td colSpan={5}>Nenhum paciente cadastrado nesta clinica.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+              <label>
+                E-mail
+                <input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(event) => setCreateForm((current) => ({ ...current, email: event.target.value }))}
+                />
+              </label>
+
+              <label>
+                Senha inicial
+                <input
+                  type="password"
+                  value={createForm.password}
+                  onChange={(event) => setCreateForm((current) => ({ ...current, password: event.target.value }))}
+                />
+              </label>
+
+              <label>
+                Perfil
+                <select
+                  value={createForm.role}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      role: event.target.value as "doctor" | "patient",
+                      birthDate: event.target.value === "patient" ? current.birthDate : "",
+                    }))
+                  }
+                >
+                  <option value="doctor">Medico</option>
+                  <option value="patient">Paciente</option>
+                </select>
+              </label>
+
+              {createForm.role === "patient" && (
+                <label>
+                  Nascimento
+                  <input
+                    type="date"
+                    value={createForm.birthDate}
+                    onChange={(event) => setCreateForm((current) => ({ ...current, birthDate: event.target.value }))}
+                  />
+                </label>
+              )}
+
+              <button type="submit" className="doctor-action-button doctor-action-button-primary" disabled={creating}>
+                {creating ? "Cadastrando..." : "Adicionar usuario"}
+              </button>
+
+              {createError && <p className="error">{createError}</p>}
+            </form>
           </section>
-        ))}
+
+          <section className="card doctor-record-card">
+            <div className="doctor-record-header">
+              <div>
+                <span className="doctor-section-label">Edicao</span>
+                <h2>{selectedUser ? `Editar ${selectedUser.name}` : "Selecione um usuario"}</h2>
+                <p className="muted">Atualize dados cadastrais e redefina a senha quando necessario.</p>
+              </div>
+            </div>
+
+            {!selectedUser && <p className="muted">Escolha um usuario na lista acima para editar.</p>}
+
+            {selectedUser && (
+              <>
+                <div className="doctor-facts-grid">
+                  <article className="doctor-fact-card">
+                    <span className="doctor-fact-label">Perfil</span>
+                    <strong>{selectedUser.role === "doctor" ? "Medico" : "Paciente"}</strong>
+                    <small>Profile ID {selectedUser.id}</small>
+                  </article>
+                  <article className="doctor-fact-card">
+                    <span className="doctor-fact-label">Usuario</span>
+                    <strong>{selectedUser.userId}</strong>
+                    <small>{selectedUser.email}</small>
+                  </article>
+                  <article className="doctor-fact-card">
+                    <span className="doctor-fact-label">Clinica</span>
+                    <strong>{selectedUser.clinicName}</strong>
+                    <small>Codigo {selectedUser.joinCode}</small>
+                  </article>
+                </div>
+
+                <form className="clinic-user-form" onSubmit={handleUpdateUser}>
+                  <label>
+                    Nome
+                    <input
+                      value={editForm.name}
+                      onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))}
+                    />
+                  </label>
+
+                  <label>
+                    E-mail
+                    <input
+                      type="email"
+                      value={editForm.email}
+                      onChange={(event) => setEditForm((current) => ({ ...current, email: event.target.value }))}
+                    />
+                  </label>
+
+                  {selectedUser.role === "patient" && (
+                    <label>
+                      Nascimento
+                      <input
+                        type="date"
+                        value={editForm.birthDate}
+                        onChange={(event) => setEditForm((current) => ({ ...current, birthDate: event.target.value }))}
+                      />
+                    </label>
+                  )}
+
+                  <label>
+                    Nova senha
+                    <input
+                      type="password"
+                      value={editForm.password}
+                      onChange={(event) => setEditForm((current) => ({ ...current, password: event.target.value }))}
+                      placeholder="Preencha apenas se quiser alterar"
+                    />
+                  </label>
+
+                  <button type="submit" className="doctor-action-button doctor-action-button-secondary" disabled={saving}>
+                    {saving ? "Salvando..." : "Salvar alteracoes"}
+                  </button>
+
+                  {editError && <p className="error">{editError}</p>}
+                </form>
+              </>
+            )}
+          </section>
+        </div>
+      </section>
     </main>
   );
 }

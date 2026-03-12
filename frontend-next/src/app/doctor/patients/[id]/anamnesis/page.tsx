@@ -52,7 +52,7 @@ export default function DoctorPatientAnamnesisPage() {
         <>
           <section className="card">
             <p>
-              <strong>Status:</strong> {payload.anamnesis.isCompleted ? "Finalizada" : "Rascunho"}
+              <strong>Anamnese:</strong> registro unico editavel do paciente
             </p>
             <p className="muted">
               Última atualização:{" "}
