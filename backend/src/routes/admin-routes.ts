@@ -49,6 +49,17 @@ export const adminRoutes = Router();
 
 adminRoutes.use(authMiddleware, requireRole("admin", "clinic_admin"));
 
+const serializeBirthDate = (value: unknown) => {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  }
+  if (typeof value === "string") {
+    return value.slice(0, 10);
+  }
+  return null;
+};
+
 const resolveScopedClinicId = (req: Request, requestedClinicId?: string) => {
   const auth = req.auth;
   if (!auth) throw new HttpError("Nao autenticado.", 401);
@@ -138,7 +149,7 @@ adminRoutes.get("/dashboard", async (req, res, next) => {
         name: patientUser?.name ?? "Sem nome",
         email: patientUser?.email ?? "Sem email",
         role: "patient",
-        birthDate: patient.birthDate ? patient.birthDate.toISOString().slice(0, 10) : null,
+        birthDate: serializeBirthDate(patient.birthDate),
       });
     });
 
@@ -209,7 +220,7 @@ adminRoutes.post("/users", async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: "patient" as const,
-        birthDate: patient.birthDate ? patient.birthDate.toISOString().slice(0, 10) : null,
+        birthDate: serializeBirthDate(patient.birthDate),
       };
     });
 
@@ -285,7 +296,7 @@ adminRoutes.patch("/users/:userId", async (req, res, next) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      birthDate: patient?.birthDate ? patient.birthDate.toISOString().slice(0, 10) : null,
+      birthDate: serializeBirthDate(patient?.birthDate),
     });
   } catch (error) {
     next(error);

@@ -1,6 +1,7 @@
+import bcrypt from "bcryptjs";
 import { Router } from "express";
 import { z } from "zod";
-import { UserModel } from "../db/models/index.js";
+import { ClinicModel, UserModel } from "../db/models/index.js";
 import { authMiddleware } from "../middleware/auth-middleware.js";
 import { addAuditLog } from "../services/audit-service.js";
 import { loginUser, refreshAuthToken, registerUser, requestPasswordReset, resetPassword } from "../services/auth-service.js";
@@ -75,9 +76,33 @@ const resetPasswordSchema = z.object({
 const updateMeSchema = z.object({
   name: z.string().min(3).max(120),
   email: z.string().email().max(160),
+  password: z.string().min(6).optional(),
+});
+
+const completeOnboardingSchema = z.object({
+  name: z.string().min(3).max(120),
+  email: z.string().email().max(160),
+});
+
+const digitsOnly = (value: unknown) => (typeof value === "string" ? value.replace(/\D/g, "") : value);
+
+const updateClinicProfileSchema = z.object({
+  clinicName: z.string().trim().min(3).max(160),
+  cnpj: z.preprocess(digitsOnly, z.string().regex(/^\d{14}$/)),
 });
 
 export const authRoutes = Router();
+
+const serializeUser = (user: UserModel) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  clinicId: user.clinicId ?? undefined,
+  onboardingCompleted: user.onboardingCompleted,
+  onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
+  createdAt: user.createdAt.toISOString(),
+});
 
 authRoutes.post("/register", async (req, res, next) => {
   try {
@@ -147,14 +172,7 @@ authRoutes.get("/me", authMiddleware, async (req, res, next) => {
     const user = await UserModel.findByPk(req.auth!.userId);
     if (!user) throw new HttpError("Usuario nao encontrado.", 404);
 
-    res.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      clinicId: user.clinicId ?? undefined,
-      createdAt: user.createdAt.toISOString(),
-    });
+    res.json(serializeUser(user));
   } catch (error) {
     next(error);
   }
@@ -174,6 +192,7 @@ authRoutes.put("/me", authMiddleware, async (req, res, next) => {
 
     user.name = payload.name.trim();
     user.email = normalizedEmail;
+    if (payload.password) user.passwordHash = await bcrypt.hash(payload.password, 10);
     await user.save();
 
     addAuditLog({
@@ -184,13 +203,100 @@ authRoutes.put("/me", authMiddleware, async (req, res, next) => {
       ip: req.ip,
     });
 
+    res.json(serializeUser(user));
+  } catch (error) {
+    next(error);
+  }
+});
+
+authRoutes.put("/me/onboarding", authMiddleware, async (req, res, next) => {
+  try {
+    const payload = completeOnboardingSchema.parse(req.body);
+    const user = await UserModel.findByPk(req.auth!.userId);
+    if (!user) throw new HttpError("Usuario nao encontrado.", 404);
+
+    const normalizedEmail = payload.email.trim().toLowerCase();
+    const existing = await UserModel.findOne({ where: { email: normalizedEmail } });
+    if (existing && existing.id !== user.id) {
+      throw new HttpError("E-mail ja cadastrado.", 409);
+    }
+
+    user.name = payload.name.trim();
+    user.email = normalizedEmail;
+    if (!user.onboardingCompleted) {
+      user.onboardingCompleted = true;
+      user.onboardingCompletedAt = new Date();
+    }
+    await user.save();
+
+    addAuditLog({
+      actorUserId: user.id,
+      action: "user.onboarding.complete",
+      resource: "users",
+      resourceId: user.id,
+      ip: req.ip,
+    });
+
+    res.json(serializeUser(user));
+  } catch (error) {
+    next(error);
+  }
+});
+
+authRoutes.get("/me/clinic", authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.auth?.clinicId) throw new HttpError("Usuario sem clinica vinculada.", 403);
+
+    const clinic = await ClinicModel.findByPk(req.auth.clinicId);
+    if (!clinic) throw new HttpError("Clinica nao encontrada.", 404);
+
     res.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      clinicId: user.clinicId ?? undefined,
-      createdAt: user.createdAt.toISOString(),
+      clinicId: clinic.id,
+      clinicName: clinic.name,
+      joinCode: clinic.joinCode,
+      cnpj: clinic.cnpj,
+      createdAt: clinic.createdAt.toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+authRoutes.put("/me/clinic", authMiddleware, async (req, res, next) => {
+  try {
+    if (req.auth?.role !== "clinic_admin") {
+      throw new HttpError("Apenas admin de clinica pode editar este perfil.", 403);
+    }
+    if (!req.auth.clinicId) throw new HttpError("Usuario sem clinica vinculada.", 403);
+
+    const payload = updateClinicProfileSchema.parse(req.body);
+    const clinic = await ClinicModel.findByPk(req.auth.clinicId);
+    if (!clinic) throw new HttpError("Clinica nao encontrada.", 404);
+
+    const normalizedName = payload.clinicName.trim();
+    const existingClinic = await ClinicModel.findOne({ where: { name: normalizedName } });
+    if (existingClinic && existingClinic.id !== clinic.id) {
+      throw new HttpError("Ja existe clinica com este nome.", 409);
+    }
+
+    clinic.name = normalizedName;
+    clinic.cnpj = payload.cnpj;
+    await clinic.save();
+
+    addAuditLog({
+      actorUserId: req.auth.userId,
+      action: "clinic.self.update",
+      resource: "clinics",
+      resourceId: clinic.id,
+      ip: req.ip,
+    });
+
+    res.json({
+      clinicId: clinic.id,
+      clinicName: clinic.name,
+      joinCode: clinic.joinCode,
+      cnpj: clinic.cnpj,
+      createdAt: clinic.createdAt.toISOString(),
     });
   } catch (error) {
     next(error);

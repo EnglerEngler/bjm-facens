@@ -5,6 +5,7 @@ export class ClinicModel extends Model<InferAttributes<ClinicModel>, InferCreati
   declare id: string;
   declare name: string;
   declare joinCode: string;
+  declare cnpj: string | null;
   declare createdAt: CreationOptional<Date>;
 }
 
@@ -24,6 +25,10 @@ ClinicModel.init(
       allowNull: false,
       unique: true,
       field: "join_code",
+    },
+    cnpj: {
+      type: DataTypes.STRING(18),
+      allowNull: true,
     },
     createdAt: {
       type: DataTypes.DATE,

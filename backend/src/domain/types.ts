@@ -10,6 +10,8 @@ export interface User {
   passwordHash: string;
   role: UserRole;
   clinicId?: string;
+  onboardingCompleted: boolean;
+  onboardingCompletedAt?: string | null;
   createdAt: string;
 }
 
@@ -115,9 +117,13 @@ export interface AIAssessment {
 export interface AuditLog {
   id: string;
   actorUserId: string;
+  actorName?: string | null;
+  actorEmail?: string | null;
   action: string;
   resource: string;
   resourceId?: string;
+  patientId?: string | null;
+  patientName?: string | null;
   ip: string;
   metadata?: Record<string, unknown>;
   createdAt: string;

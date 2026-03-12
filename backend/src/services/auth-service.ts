@@ -19,12 +19,16 @@ import type { User, UserRole } from "../domain/types.js";
 import { createId } from "../utils/id.js";
 import { HttpError } from "../utils/http-error.js";
 
-const sanitizeUser = (user: Pick<User, "id" | "name" | "email" | "role" | "clinicId" | "createdAt">) => ({
+const sanitizeUser = (
+  user: Pick<User, "id" | "name" | "email" | "role" | "clinicId" | "createdAt" | "onboardingCompleted" | "onboardingCompletedAt">,
+) => ({
   id: user.id,
   name: user.name,
   email: user.email,
   role: user.role,
   clinicId: user.clinicId,
+  onboardingCompleted: user.onboardingCompleted,
+  onboardingCompletedAt: user.onboardingCompletedAt,
   createdAt: user.createdAt,
 });
 
@@ -96,6 +100,8 @@ export const registerUser = async (payload: {
           passwordHash,
           role: payload.role,
           clinicId,
+          onboardingCompleted: false,
+          onboardingCompletedAt: null,
           createdAt: new Date(),
         },
         { transaction },
@@ -162,6 +168,8 @@ export const registerUser = async (payload: {
     email: user.email,
     role: user.role,
     clinicId: user.clinicId ?? undefined,
+    onboardingCompleted: user.onboardingCompleted,
+    onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
     createdAt: user.createdAt.toISOString(),
   });
   return {
@@ -202,6 +210,8 @@ export const loginUser = async (payload: { email: string; password: string }) =>
       email: user.email,
       role: user.role,
       clinicId: user.clinicId ?? undefined,
+      onboardingCompleted: user.onboardingCompleted,
+      onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
       createdAt: user.createdAt.toISOString(),
     }),
   };

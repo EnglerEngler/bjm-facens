@@ -8,6 +8,8 @@ export class UserModel extends Model<InferAttributes<UserModel>, InferCreationAt
   declare passwordHash: string;
   declare role: "doctor" | "patient" | "admin" | "clinic_admin";
   declare clinicId: string | null;
+  declare onboardingCompleted: CreationOptional<boolean>;
+  declare onboardingCompletedAt: Date | null;
   declare createdAt: CreationOptional<Date>;
 }
 
@@ -39,6 +41,17 @@ UserModel.init(
       type: DataTypes.STRING(50),
       allowNull: true,
       field: "clinic_id",
+    },
+    onboardingCompleted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: "onboarding_completed",
+    },
+    onboardingCompletedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: "onboarding_completed_at",
     },
     createdAt: {
       type: DataTypes.DATE,

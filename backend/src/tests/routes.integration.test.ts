@@ -7,7 +7,14 @@ import { app } from "../app.js";
 type LoginOutput = {
   token: string;
   refreshToken: string;
-  user: { id: string; role: string; email: string; clinicId?: string };
+  user: {
+    id: string;
+    role: string;
+    email: string;
+    clinicId?: string;
+    onboardingCompleted: boolean;
+    onboardingCompletedAt?: string | null;
+  };
 };
 
 type RegisterOutput = {
@@ -181,6 +188,7 @@ test("routes: auth full flow (register/login/refresh/forgot/reset)", async () =>
 
     const loginAfterReset = await login(api.baseUrl, email, "654321");
     assert.equal(loginAfterReset.user.email, email);
+    assert.equal(loginAfterReset.user.onboardingCompleted, false);
   } finally {
     await api.close();
   }
@@ -241,6 +249,21 @@ test("routes: patients and records", async () => {
       headers: { Authorization: `Bearer ${ctx.patientSession.token}` },
     });
     assert.equal(mePrescriptions.status, 200);
+
+    const completeUserOnboarding = await fetch(`${api.baseUrl}/auth/me/onboarding`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${ctx.patientSession.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "Patient QA",
+        email: ctx.patientSession.user.email,
+      }),
+    });
+    assert.equal(completeUserOnboarding.status, 200);
+    const onboardingBody = await completeUserOnboarding.json();
+    assert.equal(onboardingBody.onboardingCompleted, true);
 
     const updateProfile = await fetch(`${api.baseUrl}/patients/me/profile`, {
       method: "PUT",
