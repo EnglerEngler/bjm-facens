@@ -5,8 +5,15 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api-client";
+import { pushFlashToast } from "@/lib/flash-toast";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
-import type { Patient } from "@/types/domain";
+import { useAuth } from "@/providers/auth-provider";
+import type { Patient, User } from "@/types/domain";
+
+interface AccountFormState {
+  name: string;
+  email: string;
+}
 
 interface ViaCepResponse {
   cep?: string;
@@ -80,9 +87,14 @@ const formatCep = (value: string) => {
 };
 
 export default function PatientOnboardingPage() {
-  useAuthRedirect({ allowIncompletePatient: true });
+  useAuthRedirect({ allowIncompleteOnboarding: true });
 
   const router = useRouter();
+  const { session, updateSessionUser } = useAuth();
+  const [accountForm, setAccountForm] = useState<AccountFormState>({
+    name: session?.user.name ?? "",
+    email: session?.user.email ?? "",
+  });
   const [form, setForm] = useState<PatientProfileFormState>(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -96,6 +108,10 @@ export default function PatientOnboardingPage() {
         setStatus(null);
         const patient = await apiRequest<Patient>("/patients/me/profile");
         setForm(toFormState(patient));
+        setAccountForm({
+          name: session?.user.name ?? "",
+          email: session?.user.email ?? "",
+        });
       } catch (err) {
         setStatus(err instanceof Error ? err.message : "Falha ao carregar seu cadastro.");
       } finally {
@@ -104,7 +120,7 @@ export default function PatientOnboardingPage() {
     };
 
     void run();
-  }, []);
+  }, [session?.user.email, session?.user.name]);
 
   const setField = <K extends keyof PatientProfileFormState>(field: K, value: PatientProfileFormState[K]) => {
     setForm((current) => ({
@@ -150,6 +166,14 @@ export default function PatientOnboardingPage() {
     try {
       setSaving(true);
       setStatus(null);
+      if (!session) throw new Error("Sessao nao encontrada.");
+      const updatedUser = await apiRequest<User>("/auth/me/onboarding", {
+        method: "PUT",
+        body: JSON.stringify({
+          name: accountForm.name,
+          email: accountForm.email,
+        }),
+      });
       await apiRequest<Patient>("/patients/me/profile", {
         method: "PUT",
         body: JSON.stringify({
@@ -160,6 +184,8 @@ export default function PatientOnboardingPage() {
           emergencyContactPhone: digitsOnly(form.emergencyContactPhone),
         }),
       });
+      updateSessionUser(updatedUser);
+      pushFlashToast("Perfil configurado com sucesso.");
       router.push("/patient/dashboard");
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Falha ao concluir cadastro.");
@@ -179,14 +205,19 @@ export default function PatientOnboardingPage() {
             seu prontuario consistente.
           </p>
         </div>
+        <div className="doctor-hero-meta">
+          <span>Conta: {session?.user.email ?? "Nao identificada"}</span>
+          <span>Perfil de paciente em ativacao</span>
+          <span>Preencha os dados obrigatorios</span>
+        </div>
       </section>
 
       <section className="card doctor-record-card">
         <div className="doctor-record-header">
           <div>
             <span className="doctor-section-label">Cadastro inicial</span>
-            <h2>Dados obrigatorios</h2>
-            <p className="muted">Preencha todos os campos abaixo. O acesso ao dashboard sera liberado ao concluir.</p>
+            <h2>Dados da conta e do perfil</h2>
+            <p className="muted">Preencha os dados pessoais, contato e endereco. O acesso ao dashboard sera liberado ao concluir.</p>
           </div>
         </div>
 
@@ -194,6 +225,29 @@ export default function PatientOnboardingPage() {
           <p>Carregando seus dados...</p>
         ) : (
           <form className="patient-onboarding-form" onSubmit={submit}>
+            <section className="doctor-anamnesis-card">
+              <h3>Conta</h3>
+              <div className="patient-onboarding-grid">
+                <label>
+                  Nome
+                  <input
+                    value={accountForm.name}
+                    onChange={(event) => setAccountForm((current) => ({ ...current, name: event.target.value }))}
+                    required
+                  />
+                </label>
+                <label>
+                  E-mail
+                  <input
+                    type="email"
+                    value={accountForm.email}
+                    onChange={(event) => setAccountForm((current) => ({ ...current, email: event.target.value }))}
+                    required
+                  />
+                </label>
+              </div>
+            </section>
+
             <section className="doctor-anamnesis-card">
               <h3>Dados pessoais</h3>
               <div className="patient-onboarding-grid">

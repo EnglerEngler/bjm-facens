@@ -4,8 +4,11 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api-client";
+import { pushFlashToast } from "@/lib/flash-toast";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
+import { roleDefaultPath } from "@/lib/role-utils";
 import { useAuth } from "@/providers/auth-provider";
 import type { Patient, User } from "@/types/domain";
 
@@ -86,8 +89,9 @@ const toProfileFormState = (patient: Patient): PatientProfileFormState => ({
 });
 
 export default function PatientProfilePage() {
-  useAuthRedirect({ allowIncompletePatient: true });
+  useAuthRedirect({ allowIncompleteOnboarding: true });
 
+  const router = useRouter();
   const { session, updateSessionUser } = useAuth();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [accountForm, setAccountForm] = useState<AccountFormState>({
@@ -188,7 +192,8 @@ export default function PatientProfilePage() {
         name: updatedUser.name,
         email: updatedUser.email,
       });
-      setStatus("Perfil atualizado com sucesso.");
+      pushFlashToast("Perfil atualizado com sucesso.");
+      router.push(roleDefaultPath("patient"));
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Falha ao atualizar conta e perfil.");
     } finally {

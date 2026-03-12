@@ -8,7 +8,17 @@ jest.mock("next/navigation", () => ({
 
 jest.mock("@/providers/auth-provider", () => ({
   useAuth: () => ({
-    login: jest.fn().mockResolvedValue({ user: { role: "doctor" } }),
+    login: jest.fn().mockResolvedValue({
+      user: {
+        id: "user_1",
+        name: "Doctor QA",
+        email: "doctor@bjm.local",
+        role: "doctor",
+        onboardingCompleted: true,
+        onboardingCompletedAt: "2026-03-12T12:00:00.000Z",
+        createdAt: "2026-03-12T12:00:00.000Z",
+      },
+    }),
     register: jest.fn().mockResolvedValue(undefined),
   }),
 }));

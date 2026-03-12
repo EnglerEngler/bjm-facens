@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { popFlashToast } from "@/lib/flash-toast";
 import { roleDefaultPath } from "@/lib/role-utils";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -13,6 +14,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const isOverlayRoute = pathname === "/login" || pathname === "/como-funciona";
   const hideGuestHeaderLoginLink = pathname === "/login" || pathname === "/como-funciona";
   const canAccessDoctorDashboard = session?.user.role === "doctor";
@@ -21,7 +23,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const canAccessClinicAdminArea = session?.user.role === "clinic_admin";
   const canAccessAudit = canAccessAdminArea || canAccessClinicAdminArea;
   const canAccessLogin = !session && !hideGuestHeaderLoginLink;
-  const profilePath = session?.user.role === "patient" ? "/patient/profile" : null;
+  const profilePath =
+    session?.user.role === "patient"
+      ? "/patient/profile"
+      : session?.user.role === "doctor"
+        ? "/doctor/profile"
+        : session?.user.role === "admin"
+          ? "/admin/profile"
+          : session?.user.role === "clinic_admin"
+            ? "/clinic/profile"
+            : null;
   const hasMenuEntries =
     canAccessDoctorDashboard || canAccessPatientDashboard || canAccessAdminArea || canAccessClinicAdminArea || canAccessLogin;
   const userName = session?.user.name?.trim() || "";
@@ -44,6 +55,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setIsMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const message = popFlashToast();
+    if (!message) return;
+
+    setToastMessage(message);
+    const timer = window.setTimeout(() => {
+      setToastMessage(null);
+    }, 3200);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [pathname]);
 
   useEffect(() => {
@@ -78,6 +103,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      {toastMessage && (
+        <div className="app-toast" role="status" aria-live="polite">
+          <strong>Salvo</strong>
+          <span>{toastMessage}</span>
+        </div>
+      )}
       {!isOverlayRoute && (
         <header className="card app-header">
           <div className="between" style={{ width: "100%", margin: 0 }}>
@@ -126,6 +157,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         Dashboard Médico
                       </Link>
                     )}
+                    {canAccessDoctorDashboard && (
+                      <Link href="/doctor/profile" className="menu-link">
+                        Meu Perfil
+                      </Link>
+                    )}
                     {canAccessPatientDashboard && (
                       <Link href="/patient/dashboard" className="menu-link">
                         Dashboard Paciente
@@ -146,9 +182,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         Dashboard Admin
                       </Link>
                     )}
+                    {canAccessAdminArea && (
+                      <Link href="/admin/profile" className="menu-link">
+                        Meu Perfil
+                      </Link>
+                    )}
                     {canAccessClinicAdminArea && (
                       <Link href="/clinic/dashboard" className="menu-link">
                         Dashboard Clínica
+                      </Link>
+                    )}
+                    {canAccessClinicAdminArea && (
+                      <Link href="/clinic/profile" className="menu-link">
+                        Perfil da Clínica
                       </Link>
                     )}
                     {canAccessAudit && (

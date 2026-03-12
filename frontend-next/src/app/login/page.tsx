@@ -29,7 +29,7 @@ export default function LoginPage() {
             decisões em tempo real.
           </p>
           <div className="login-feature-list" aria-label="Recursos principais">
-            <span>Consultas online</span>
+            <span>Medicina integrativa</span>
             <span>Prontuário integrado</span>
             <span>Acompanhamento contínuo</span>
           </div>

@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { apiRequest } from "@/lib/api-client";
 import { useAuth } from "@/providers/auth-provider";
-import { roleDefaultPath } from "@/lib/role-utils";
-import type { Patient, UserRole } from "@/types/domain";
+import { roleDefaultPath, roleOnboardingPath } from "@/lib/role-utils";
+import type { Patient, User, UserRole } from "@/types/domain";
 
 const loginSchema = z.object({
   email: z.string().email("E-mail inválido."),
@@ -72,8 +72,9 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const resolvePostLoginPath = async (userRole: UserRole) => {
-    if (userRole !== "patient") return roleDefaultPath(userRole);
+  const resolvePostLoginPath = async (user: User) => {
+    if (!user.onboardingCompleted) return roleOnboardingPath(user.role);
+    if (user.role !== "patient") return roleDefaultPath(user.role);
     const profile = await apiRequest<Patient>("/patients/me/profile");
     return profile.onboardingCompleted ? "/patient/dashboard" : "/patient/onboarding";
   };
@@ -87,12 +88,12 @@ export function LoginForm() {
       if (mode === "login") {
         const parsed = loginSchema.parse({ email, password });
         const session = await login(parsed.email, parsed.password);
-        router.push(await resolvePostLoginPath(session.user.role));
+        router.push(await resolvePostLoginPath(session.user));
       } else {
         const parsed = registerSchema.parse({ name, email, password, role, clinicName, clinicJoinCode });
         await register(parsed);
         const session = await login(parsed.email, parsed.password);
-        router.push(await resolvePostLoginPath(session.user.role));
+        router.push(await resolvePostLoginPath(session.user));
       }
     } catch (err) {
       setError(getReadableErrorMessage(err));

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api-client";
 import { useAuth } from "@/providers/auth-provider";
-import { roleDefaultPath } from "@/lib/role-utils";
+import { roleDefaultPath, roleOnboardingPath } from "@/lib/role-utils";
 import type { Patient, UserRole } from "@/types/domain";
 
 const rolePrefix: Record<UserRole, string> = {
@@ -15,7 +15,7 @@ const rolePrefix: Record<UserRole, string> = {
 };
 
 interface UseAuthRedirectOptions {
-  allowIncompletePatient?: boolean;
+  allowIncompleteOnboarding?: boolean;
 }
 
 export const useAuthRedirect = (options: UseAuthRedirectOptions = {}) => {
@@ -28,16 +28,30 @@ export const useAuthRedirect = (options: UseAuthRedirectOptions = {}) => {
 
     let cancelled = false;
 
-    const checkPatientOnboarding = async () => {
-      if (!session || session.user.role !== "patient") return;
+    const checkOnboarding = async () => {
+      if (!session) return;
+
+      const onboardingPath = roleOnboardingPath(session.user.role);
+      const isOnboardingRoute = pathname === onboardingPath;
+
+      if (!session.user.onboardingCompleted && !options.allowIncompleteOnboarding && !isOnboardingRoute) {
+        router.replace(onboardingPath);
+        return;
+      }
+
+      if (session.user.role !== "patient") {
+        if (session.user.onboardingCompleted && isOnboardingRoute) {
+          router.replace(roleDefaultPath(session.user.role));
+        }
+        return;
+      }
+
+      if (!session.user.onboardingCompleted) return;
 
       const profile = await apiRequest<Patient>("/patients/me/profile");
       if (cancelled) return;
 
-      const onboardingPath = "/patient/onboarding";
-      const isOnboardingRoute = pathname === onboardingPath;
-
-      if (!profile.onboardingCompleted && !options.allowIncompletePatient && !isOnboardingRoute) {
+      if (!profile.onboardingCompleted && !options.allowIncompleteOnboarding && !isOnboardingRoute) {
         router.replace(onboardingPath);
         return;
       }
@@ -61,13 +75,9 @@ export const useAuthRedirect = (options: UseAuthRedirectOptions = {}) => {
     }
 
     if (pathname === "/login") {
-      if (session.user.role === "patient") {
-        void checkPatientOnboarding().catch(() => {
-          if (!cancelled) router.replace("/patient/onboarding");
-        });
-      } else {
-        router.replace(roleDefaultPath(session.user.role));
-      }
+      void checkOnboarding().catch(() => {
+        if (!cancelled) router.replace(roleOnboardingPath(session.user.role));
+      });
       return () => {
         cancelled = true;
       };
@@ -81,16 +91,14 @@ export const useAuthRedirect = (options: UseAuthRedirectOptions = {}) => {
       };
     }
 
-    if (session.user.role === "patient") {
-      void checkPatientOnboarding().catch(() => {
-        if (!cancelled && !options.allowIncompletePatient) {
-          router.replace("/patient/onboarding");
-        }
-      });
-    }
+    void checkOnboarding().catch(() => {
+      if (!cancelled && !options.allowIncompleteOnboarding) {
+        router.replace(roleOnboardingPath(session.user.role));
+      }
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [session, loading, pathname, router, options.allowIncompletePatient]);
+  }, [session, loading, pathname, router, options.allowIncompleteOnboarding]);
 };

@@ -6,3 +6,10 @@ export const roleDefaultPath = (role: UserRole): string => {
   if (role === "clinic_admin") return "/clinic/dashboard";
   return "/admin/dashboard";
 };
+
+export const roleOnboardingPath = (role: UserRole): string => {
+  if (role === "doctor") return "/doctor/onboarding";
+  if (role === "patient") return "/patient/onboarding";
+  if (role === "clinic_admin") return "/clinic/onboarding";
+  return "/admin/onboarding";
+};

@@ -8,6 +8,8 @@ export interface User {
   email: string;
   role: UserRole;
   clinicId?: string;
+  onboardingCompleted: boolean;
+  onboardingCompletedAt?: string | null;
   createdAt: string;
 }
 
@@ -120,9 +122,13 @@ export interface AIAssessment {
 export interface AuditLog {
   id: string;
   actorUserId: string;
+  actorName?: string | null;
+  actorEmail?: string | null;
   action: string;
   resource: string;
   resourceId?: string;
+  patientId?: string | null;
+  patientName?: string | null;
   ip: string;
   metadata?: Record<string, unknown>;
   createdAt: string;
@@ -155,4 +161,12 @@ export interface ClinicManagedUser {
   email: string;
   role: "doctor" | "patient";
   birthDate: string | null;
+}
+
+export interface ClinicProfile {
+  clinicId: string;
+  clinicName: string;
+  joinCode: string;
+  cnpj?: string | null;
+  createdAt: string;
 }
