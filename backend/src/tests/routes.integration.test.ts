@@ -242,6 +242,29 @@ test("routes: patients and records", async () => {
     });
     assert.equal(mePrescriptions.status, 200);
 
+    const updateProfile = await fetch(`${api.baseUrl}/patients/me/profile`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${ctx.patientSession.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        birthDate: "1993-09-12",
+        biologicalSex: "masculino",
+        phone: "11999999999",
+        addressZipCode: "01310100",
+        addressStreet: "Avenida Paulista",
+        addressNumber: "1000",
+        addressComplement: "",
+        addressNeighborhood: "Bela Vista",
+        addressCity: "Sao Paulo",
+        addressState: "SP",
+        emergencyContactName: "Contato QA",
+        emergencyContactPhone: "11988888888",
+      }),
+    });
+    assert.equal(updateProfile.status, 200);
+
     const saveAnamnesis = await fetch(`${api.baseUrl}/patients/me/anamnesis`, {
       method: "PUT",
       headers: {
@@ -250,12 +273,13 @@ test("routes: patients and records", async () => {
       },
       body: JSON.stringify({
         answers: {
-          chronic_disease: "Sim, hipertensao.",
+          main_complaint: "Dor de cabeca.",
+          diagnosed_conditions: "Sim, hipertensao.",
           smoking: "Nao",
-          biological_sex: "masculino",
-          male_erection_quality: "Sim",
-        },
-        isCompleted: true,
+          height: "1,80",
+          weight: "82",
+          male_urination_difficulty: "Nao",
+        }
       }),
     });
     assert.equal(saveAnamnesis.status, 201);
@@ -265,7 +289,9 @@ test("routes: patients and records", async () => {
     });
     assert.equal(readAnamnesis.status, 200);
     const anamnesisBody = await readAnamnesis.json();
-    assert.equal(anamnesisBody.anamnesis.answers.chronic_disease, "Sim, hipertensao.");
+    assert.equal(anamnesisBody.anamnesis.answers.diagnosed_conditions, "Sim, hipertensao.");
+    assert.equal(anamnesisBody.anamnesis.answers.biological_sex, "masculino");
+    assert.equal(anamnesisBody.anamnesis.answers.body_mass_index, "25,3");
   } finally {
     await api.close();
   }
@@ -379,6 +405,95 @@ test("routes: role authorization denies patient on doctor-only routes", async ()
     });
 
     assert.equal(doctorOnly.status, 403);
+  } finally {
+    await api.close();
+  }
+});
+
+test("routes: clinic admin can create and edit clinic users", async () => {
+  const api = await startServer();
+  try {
+    const uniq = Date.now();
+    const clinicAdmin = await register(api.baseUrl, {
+      name: "Admin Clinica Gestao",
+      email: `clinic_manage_${uniq}@bjm.local`,
+      password: "123456",
+      role: "clinic_admin",
+      clinicName: `Clinica Gestao ${uniq}`,
+    });
+    const clinicAdminSession = await login(api.baseUrl, `clinic_manage_${uniq}@bjm.local`, "123456");
+
+    const createDoctor = await fetch(`${api.baseUrl}/admin/users`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${clinicAdminSession.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "Medico Gestao",
+        email: `doctor_manage_${uniq}@bjm.local`,
+        password: "123456",
+        role: "doctor",
+      }),
+    });
+    assert.equal(createDoctor.status, 201);
+    const doctorBody = (await createDoctor.json()) as { userId: string; role: string };
+    assert.equal(doctorBody.role, "doctor");
+
+    const createPatient = await fetch(`${api.baseUrl}/admin/users`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${clinicAdminSession.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "Paciente Gestao",
+        email: `patient_manage_${uniq}@bjm.local`,
+        password: "123456",
+        role: "patient",
+        birthDate: "1990-08-16",
+      }),
+    });
+    assert.equal(createPatient.status, 201);
+    const patientBody = (await createPatient.json()) as { userId: string; role: string; birthDate: string | null };
+    assert.equal(patientBody.role, "patient");
+    assert.equal(patientBody.birthDate, "1990-08-16");
+
+    const updatePatient = await fetch(`${api.baseUrl}/admin/users/${patientBody.userId}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${clinicAdminSession.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "Paciente Editado",
+        email: `patient_manage_edit_${uniq}@bjm.local`,
+        birthDate: "1991-01-20",
+      }),
+    });
+    assert.equal(updatePatient.status, 200);
+    const updatedPatient = (await updatePatient.json()) as { name: string; email: string; birthDate: string | null };
+    assert.equal(updatedPatient.name, "Paciente Editado");
+    assert.equal(updatedPatient.email, `patient_manage_edit_${uniq}@bjm.local`);
+    assert.equal(updatedPatient.birthDate, "1991-01-20");
+
+    const dashboard = await fetch(`${api.baseUrl}/admin/dashboard`, {
+      headers: { Authorization: `Bearer ${clinicAdminSession.token}` },
+    });
+    assert.equal(dashboard.status, 200);
+    const dashboardBody = (await dashboard.json()) as Array<{
+      doctors: Array<{ userId: string }>;
+      patients: Array<{ userId: string; name: string; birthDate: string | null }>;
+      joinCode: string;
+    }>;
+    assert.equal(dashboardBody.length, 1);
+    assert.equal(dashboardBody[0].joinCode, clinicAdmin.clinicJoinCode);
+    assert.ok(dashboardBody[0].doctors.some((item) => item.userId === doctorBody.userId));
+    assert.ok(
+      dashboardBody[0].patients.some(
+        (item) => item.userId === patientBody.userId && item.name === "Paciente Editado" && item.birthDate === "1991-01-20",
+      ),
+    );
   } finally {
     await api.close();
   }

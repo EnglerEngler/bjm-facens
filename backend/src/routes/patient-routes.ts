@@ -34,12 +34,69 @@ const createPatientSchema = z.object({
 
 const upsertAnamnesisSchema = z.object({
   answers: z.record(z.string().max(2000)),
-  isCompleted: z.boolean().optional(),
+});
+
+const parseDecimal = (value?: string | null) => {
+  if (!value) return null;
+  const normalized = value.replace(",", ".").trim();
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const calculateBodyMassIndex = (heightValue?: string | null, weightValue?: string | null) => {
+  const weight = parseDecimal(weightValue);
+  const heightRaw = parseDecimal(heightValue);
+  if (!weight || !heightRaw) return null;
+
+  const height = heightRaw > 3 ? heightRaw / 100 : heightRaw;
+  if (height <= 0) return null;
+
+  const bmi = weight / (height * height);
+  if (!Number.isFinite(bmi)) return null;
+
+  return bmi.toFixed(1).replace(".", ",");
+};
+
+const optionalProfileText = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? null : value),
+  z.string().max(160).nullable(),
+);
+
+const digitsOnly = (value: unknown) => (typeof value === "string" ? value.replace(/\D/g, "") : value);
+
+const upsertPatientProfileSchema = z.object({
+  birthDate: z.string().min(8),
+  biologicalSex: z.enum(["masculino", "feminino"]),
+  phone: z.preprocess(digitsOnly, z.string().regex(/^\d{10,11}$/)),
+  addressZipCode: z.preprocess(digitsOnly, z.string().regex(/^\d{8}$/)),
+  addressStreet: z.string().min(3).max(160),
+  addressNumber: z.string().min(1).max(20),
+  addressComplement: optionalProfileText.optional(),
+  addressNeighborhood: z.string().min(2).max(120),
+  addressCity: z.string().min(2).max(120),
+  addressState: z.string().trim().regex(/^[A-Za-z]{2}$/),
+  emergencyContactName: z.string().min(3).max(160),
+  emergencyContactPhone: z.preprocess(digitsOnly, z.string().regex(/^\d{10,11}$/)),
 });
 
 export const patientRoutes = Router();
 
 patientRoutes.use(authMiddleware);
+
+const isPatientOnboardingComplete = (patient: PatientModel) =>
+  Boolean(
+    patient.birthDate &&
+      patient.biologicalSex &&
+      patient.phone &&
+      patient.addressZipCode &&
+      patient.addressStreet &&
+      patient.addressNumber &&
+      patient.addressNeighborhood &&
+      patient.addressCity &&
+      patient.addressState &&
+      patient.emergencyContactName &&
+      patient.emergencyContactPhone,
+  );
 
 const ensureClinicAccess = (req: Express.Request, patientClinicId?: string | null) => {
   if (!req.auth) throw new HttpError("Nao autenticado.", 401);
@@ -82,8 +139,8 @@ patientRoutes.get("/me/anamnesis", requireRole("patient"), async (req, res, next
       return res.json({
         patientId: patient.id,
         answers: {},
-        formVersion: "kira-v1",
-        isCompleted: false,
+        formVersion: "anamnesis-v2",
+        isCompleted: true,
         completedAt: null,
         updatedByUserId: req.auth!.userId,
         createdAt: null,
@@ -107,14 +164,20 @@ patientRoutes.put("/me/anamnesis", requireRole("patient"), async (req, res, next
 
     const now = new Date();
     const anamnesis = await PatientAnamnesisModel.findByPk(patient.id);
+    const bodyMassIndex = calculateBodyMassIndex(payload.answers.height, payload.answers.weight);
+    const normalizedAnswers = {
+      ...payload.answers,
+      ...(patient.biologicalSex ? { biological_sex: patient.biologicalSex } : {}),
+      ...(bodyMassIndex ? { body_mass_index: bodyMassIndex } : {}),
+    };
 
     if (!anamnesis) {
       const created = await PatientAnamnesisModel.create({
         patientId: patient.id,
-        answers: payload.answers,
-        formVersion: "kira-v1",
-        isCompleted: payload.isCompleted ?? false,
-        completedAt: payload.isCompleted ? now : null,
+        answers: normalizedAnswers,
+        formVersion: "anamnesis-v2",
+        isCompleted: true,
+        completedAt: now,
         updatedByUserId: req.auth!.userId,
         createdAt: now,
         updatedAt: now,
@@ -131,9 +194,10 @@ patientRoutes.put("/me/anamnesis", requireRole("patient"), async (req, res, next
       return res.status(201).json(created);
     }
 
-    anamnesis.answers = payload.answers;
-    anamnesis.isCompleted = payload.isCompleted ?? anamnesis.isCompleted;
-    anamnesis.completedAt = anamnesis.isCompleted ? now : null;
+    anamnesis.answers = normalizedAnswers;
+    anamnesis.formVersion = "anamnesis-v2";
+    anamnesis.isCompleted = true;
+    anamnesis.completedAt = now;
     anamnesis.updatedByUserId = req.auth!.userId;
     anamnesis.updatedAt = now;
     await anamnesis.save();
@@ -144,10 +208,70 @@ patientRoutes.put("/me/anamnesis", requireRole("patient"), async (req, res, next
       resource: "patient_anamneses",
       resourceId: patient.id,
       ip: req.ip,
-      metadata: { answerCount: Object.keys(payload.answers).length, isCompleted: anamnesis.isCompleted },
+      metadata: { answerCount: Object.keys(payload.answers).length },
     });
 
     res.json(anamnesis);
+  } catch (error) {
+    next(error);
+  }
+});
+
+patientRoutes.get("/me/profile", requireRole("patient"), async (req, res, next) => {
+  try {
+    const patient = await PatientModel.findOne({
+      where: { userId: req.auth!.userId },
+    });
+    if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
+
+    addAuditLog({
+      actorUserId: req.auth!.userId,
+      action: "patient.profile.read",
+      resource: "patients",
+      resourceId: patient.id,
+      ip: req.ip,
+    });
+
+    res.json(patient);
+  } catch (error) {
+    next(error);
+  }
+});
+
+patientRoutes.put("/me/profile", requireRole("patient"), async (req, res, next) => {
+  try {
+    const payload = upsertPatientProfileSchema.parse(req.body);
+    const patient = await PatientModel.findOne({
+      where: { userId: req.auth!.userId },
+    });
+    if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
+
+    patient.birthDate = new Date(payload.birthDate);
+    patient.biologicalSex = payload.biologicalSex;
+    patient.phone = payload.phone;
+    patient.addressZipCode = payload.addressZipCode;
+    patient.addressStreet = payload.addressStreet.trim();
+    patient.addressNumber = payload.addressNumber.trim();
+    patient.addressComplement = payload.addressComplement?.trim() ?? null;
+    patient.addressNeighborhood = payload.addressNeighborhood.trim();
+    patient.addressCity = payload.addressCity.trim();
+    patient.addressState = payload.addressState.trim().toUpperCase();
+    patient.emergencyContactName = payload.emergencyContactName.trim();
+    patient.emergencyContactPhone = payload.emergencyContactPhone;
+    patient.onboardingCompleted = isPatientOnboardingComplete(patient);
+    patient.onboardingCompletedAt = patient.onboardingCompleted ? new Date() : null;
+    await patient.save();
+
+    addAuditLog({
+      actorUserId: req.auth!.userId,
+      action: "patient.profile.update",
+      resource: "patients",
+      resourceId: patient.id,
+      ip: req.ip,
+      metadata: { onboardingCompleted: patient.onboardingCompleted },
+    });
+
+    res.json(patient);
   } catch (error) {
     next(error);
   }

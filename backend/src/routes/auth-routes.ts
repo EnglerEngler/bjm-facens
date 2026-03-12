@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
+import { UserModel } from "../db/models/index.js";
+import { authMiddleware } from "../middleware/auth-middleware.js";
 import { addAuditLog } from "../services/audit-service.js";
 import { loginUser, refreshAuthToken, registerUser, requestPasswordReset, resetPassword } from "../services/auth-service.js";
+import { HttpError } from "../utils/http-error.js";
 
 const optionalText = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -69,6 +72,11 @@ const resetPasswordSchema = z.object({
   newPassword: z.string().min(6),
 });
 
+const updateMeSchema = z.object({
+  name: z.string().min(3).max(120),
+  email: z.string().email().max(160),
+});
+
 export const authRoutes = Router();
 
 authRoutes.post("/register", async (req, res, next) => {
@@ -129,6 +137,61 @@ authRoutes.post("/reset-password", async (req, res, next) => {
     const payload = resetPasswordSchema.parse(req.body);
     const result = await resetPassword(payload);
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+authRoutes.get("/me", authMiddleware, async (req, res, next) => {
+  try {
+    const user = await UserModel.findByPk(req.auth!.userId);
+    if (!user) throw new HttpError("Usuario nao encontrado.", 404);
+
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      clinicId: user.clinicId ?? undefined,
+      createdAt: user.createdAt.toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+authRoutes.put("/me", authMiddleware, async (req, res, next) => {
+  try {
+    const payload = updateMeSchema.parse(req.body);
+    const user = await UserModel.findByPk(req.auth!.userId);
+    if (!user) throw new HttpError("Usuario nao encontrado.", 404);
+
+    const normalizedEmail = payload.email.trim().toLowerCase();
+    const existing = await UserModel.findOne({ where: { email: normalizedEmail } });
+    if (existing && existing.id !== user.id) {
+      throw new HttpError("E-mail ja cadastrado.", 409);
+    }
+
+    user.name = payload.name.trim();
+    user.email = normalizedEmail;
+    await user.save();
+
+    addAuditLog({
+      actorUserId: user.id,
+      action: "user.self.update",
+      resource: "users",
+      resourceId: user.id,
+      ip: req.ip,
+    });
+
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      clinicId: user.clinicId ?? undefined,
+      createdAt: user.createdAt.toISOString(),
+    });
   } catch (error) {
     next(error);
   }
