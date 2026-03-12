@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "@/lib/api-client";
+import { pushFlashToast } from "@/lib/flash-toast";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
 import type { AdminDashboardClinic, ClinicManagedUser } from "@/types/domain";
 
@@ -220,6 +221,17 @@ export default function ClinicDashboardPage() {
     }
   };
 
+  const copyClinicJoinCode = async () => {
+    if (!clinic?.joinCode) return;
+
+    try {
+      await navigator.clipboard.writeText(clinic.joinCode);
+      pushFlashToast("Codigo de entrada copiado.");
+    } catch {
+      setFeedback("Nao foi possivel copiar o codigo de entrada.");
+    }
+  };
+
   return (
     <main className="doctor-dashboard clinic-dashboard">
       <section className="doctor-hero clinic-hero">
@@ -230,10 +242,30 @@ export default function ClinicDashboardPage() {
             Cadastre novos medicos e pacientes, revise os dados existentes e mantenha o acesso restrito a sua clinica.
           </p>
         </div>
-        <div className="doctor-hero-meta">
-          <span>{clinic?.clinicName ?? "Clinica nao identificada"}</span>
+        <div className="clinic-dashboard-code">
           <span>Codigo de entrada: {clinic?.joinCode ?? "-"}</span>
-          <span>{filteredUsers.length} resultado(s) na busca</span>
+          {clinic ? (
+            <button type="button" className="clinic-dashboard-copy-button" onClick={copyClinicJoinCode} aria-label="Copiar codigo de entrada">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M9 9a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M6 15H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          ) : null}
         </div>
       </section>
 
