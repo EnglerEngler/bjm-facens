@@ -49,11 +49,6 @@ export default function AdminAuditPage() {
           <h1>Monitoramento dos eventos do sistema</h1>
           <p className="muted">Acompanhe a trilha recente de operacoes criticas, acessos e alteracoes registradas na plataforma.</p>
         </div>
-        <div className="doctor-hero-meta">
-          <span>{metrics.total} evento(s) carregados</span>
-          <span>{metrics.actors} ator(es) distintos</span>
-          <span>{metrics.resources} recurso(s) monitorados</span>
-        </div>
       </section>
 
       <section className="doctor-search card">

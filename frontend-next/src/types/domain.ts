@@ -163,6 +163,25 @@ export interface ClinicManagedUser {
   birthDate: string | null;
 }
 
+export interface AdminManagedUserDetail extends ClinicManagedUser {
+  clinicId?: string;
+  clinicName?: string;
+  joinCode?: string;
+  biologicalSex?: "masculino" | "feminino" | null;
+  phone?: string | null;
+  addressZipCode?: string | null;
+  addressStreet?: string | null;
+  addressNumber?: string | null;
+  addressComplement?: string | null;
+  addressNeighborhood?: string | null;
+  addressCity?: string | null;
+  addressState?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  onboardingCompleted?: boolean | null;
+  onboardingCompletedAt?: string | null;
+}
+
 export interface ClinicProfile {
   clinicId: string;
   clinicName: string;

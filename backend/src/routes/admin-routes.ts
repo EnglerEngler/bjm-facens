@@ -40,6 +40,23 @@ const updateClinicUserSchema = z
     email: z.string().trim().email().optional(),
     password: z.string().min(6).optional(),
     birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    biologicalSex: z.enum(["masculino", "feminino"]).nullable().optional(),
+    phone: z.preprocess((value) => (typeof value === "string" ? value.replace(/\D/g, "") : value), z.string().regex(/^\d{10,11}$/)).nullable().optional(),
+    addressZipCode: z
+      .preprocess((value) => (typeof value === "string" ? value.replace(/\D/g, "") : value), z.string().regex(/^\d{8}$/))
+      .nullable()
+      .optional(),
+    addressStreet: z.string().trim().min(3).max(160).nullable().optional(),
+    addressNumber: z.string().trim().min(1).max(20).nullable().optional(),
+    addressComplement: z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? null : value), z.string().max(120).nullable()).optional(),
+    addressNeighborhood: z.string().trim().min(2).max(120).nullable().optional(),
+    addressCity: z.string().trim().min(2).max(120).nullable().optional(),
+    addressState: z.string().trim().regex(/^[A-Za-z]{2}$/).nullable().optional(),
+    emergencyContactName: z.string().trim().min(3).max(160).nullable().optional(),
+    emergencyContactPhone: z
+      .preprocess((value) => (typeof value === "string" ? value.replace(/\D/g, "") : value), z.string().regex(/^\d{10,11}$/))
+      .nullable()
+      .optional(),
   })
   .refine((payload) => Object.keys(payload).length > 0, {
     message: "Informe ao menos um campo para atualizar.",
@@ -71,6 +88,43 @@ const resolveScopedClinicId = (req: Request, requestedClinicId?: string) => {
   if (!auth.clinicId) throw new HttpError("Usuario sem clinica vinculada.", 403);
   return auth.clinicId;
 };
+
+const isPatientOnboardingComplete = (patient: PatientModel) =>
+  Boolean(
+    patient.birthDate &&
+      patient.biologicalSex &&
+      patient.phone &&
+      patient.addressZipCode &&
+      patient.addressStreet &&
+      patient.addressNumber &&
+      patient.addressNeighborhood &&
+      patient.addressCity &&
+      patient.addressState &&
+      patient.emergencyContactName &&
+      patient.emergencyContactPhone,
+  );
+
+const serializeManagedUser = (user: UserModel, doctor: DoctorModel | null, patient: PatientModel | null) => ({
+  id: patient?.id ?? doctor!.id,
+  userId: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  birthDate: serializeBirthDate(patient?.birthDate),
+  biologicalSex: patient?.biologicalSex ?? null,
+  phone: patient?.phone ?? null,
+  addressZipCode: patient?.addressZipCode ?? null,
+  addressStreet: patient?.addressStreet ?? null,
+  addressNumber: patient?.addressNumber ?? null,
+  addressComplement: patient?.addressComplement ?? null,
+  addressNeighborhood: patient?.addressNeighborhood ?? null,
+  addressCity: patient?.addressCity ?? null,
+  addressState: patient?.addressState ?? null,
+  emergencyContactName: patient?.emergencyContactName ?? null,
+  emergencyContactPhone: patient?.emergencyContactPhone ?? null,
+  onboardingCompleted: patient?.onboardingCompleted ?? null,
+  onboardingCompletedAt: patient?.onboardingCompletedAt?.toISOString() ?? null,
+});
 
 adminRoutes.get("/dashboard", async (req, res, next) => {
   try {
@@ -239,6 +293,31 @@ adminRoutes.post("/users", async (req, res, next) => {
   }
 });
 
+adminRoutes.get("/users/:userId", async (req, res, next) => {
+  try {
+    const requestedClinicId = typeof req.query.clinicId === "string" ? req.query.clinicId : undefined;
+    const clinicId = resolveScopedClinicId(req, requestedClinicId);
+
+    const user = await UserModel.findOne({
+      where: { id: req.params.userId, clinicId },
+    });
+    if (!user) throw new HttpError("Usuario nao encontrado nesta clinica.", 404);
+    if (user.role !== "doctor" && user.role !== "patient") {
+      throw new HttpError("Somente medico e paciente podem ser consultados nesta tela.", 403);
+    }
+
+    const patient = user.role === "patient" ? await PatientModel.findOne({ where: { userId: user.id, clinicId } }) : null;
+    if (user.role === "patient" && !patient) throw new HttpError("Perfil de paciente nao encontrado.", 404);
+
+    const doctor = user.role === "doctor" ? await DoctorModel.findOne({ where: { userId: user.id, clinicId } }) : null;
+    if (user.role === "doctor" && !doctor) throw new HttpError("Perfil de medico nao encontrado.", 404);
+
+    res.json(serializeManagedUser(user, doctor, patient));
+  } catch (error) {
+    next(error);
+  }
+});
+
 adminRoutes.patch("/users/:userId", async (req, res, next) => {
   try {
     const payload = updateClinicUserSchema.parse(req.body);
@@ -268,6 +347,22 @@ adminRoutes.patch("/users/:userId", async (req, res, next) => {
     if (user.role === "doctor" && payload.birthDate !== undefined) {
       throw new HttpError("Nascimento so pode ser alterado para pacientes.", 422);
     }
+    if (
+      user.role === "doctor" &&
+      (payload.biologicalSex !== undefined ||
+        payload.phone !== undefined ||
+        payload.addressZipCode !== undefined ||
+        payload.addressStreet !== undefined ||
+        payload.addressNumber !== undefined ||
+        payload.addressComplement !== undefined ||
+        payload.addressNeighborhood !== undefined ||
+        payload.addressCity !== undefined ||
+        payload.addressState !== undefined ||
+        payload.emergencyContactName !== undefined ||
+        payload.emergencyContactPhone !== undefined)
+    ) {
+      throw new HttpError("Campos de perfil detalhado so podem ser alterados para pacientes.", 422);
+    }
 
     await sequelize.transaction(async (transaction) => {
       if (payload.name) user.name = payload.name;
@@ -275,8 +370,21 @@ adminRoutes.patch("/users/:userId", async (req, res, next) => {
       if (payload.password) user.passwordHash = await bcrypt.hash(payload.password, 10);
       await user.save({ transaction });
 
-      if (patient && payload.birthDate !== undefined) {
-        patient.birthDate = payload.birthDate ? new Date(payload.birthDate) : null;
+      if (patient) {
+        if (payload.birthDate !== undefined) patient.birthDate = payload.birthDate ? new Date(payload.birthDate) : null;
+        if (payload.biologicalSex !== undefined) patient.biologicalSex = payload.biologicalSex;
+        if (payload.phone !== undefined) patient.phone = payload.phone;
+        if (payload.addressZipCode !== undefined) patient.addressZipCode = payload.addressZipCode;
+        if (payload.addressStreet !== undefined) patient.addressStreet = payload.addressStreet;
+        if (payload.addressNumber !== undefined) patient.addressNumber = payload.addressNumber;
+        if (payload.addressComplement !== undefined) patient.addressComplement = payload.addressComplement;
+        if (payload.addressNeighborhood !== undefined) patient.addressNeighborhood = payload.addressNeighborhood;
+        if (payload.addressCity !== undefined) patient.addressCity = payload.addressCity;
+        if (payload.addressState !== undefined) patient.addressState = payload.addressState?.toUpperCase() ?? null;
+        if (payload.emergencyContactName !== undefined) patient.emergencyContactName = payload.emergencyContactName;
+        if (payload.emergencyContactPhone !== undefined) patient.emergencyContactPhone = payload.emergencyContactPhone;
+        patient.onboardingCompleted = isPatientOnboardingComplete(patient);
+        patient.onboardingCompletedAt = patient.onboardingCompleted ? new Date() : null;
         await patient.save({ transaction });
       }
     });
@@ -290,14 +398,7 @@ adminRoutes.patch("/users/:userId", async (req, res, next) => {
       metadata: { clinicId, role: user.role },
     });
 
-    res.json({
-      id: patient?.id ?? doctor!.id,
-      userId: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      birthDate: serializeBirthDate(patient?.birthDate),
-    });
+    res.json(serializeManagedUser(user, doctor, patient));
   } catch (error) {
     next(error);
   }
