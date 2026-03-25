@@ -6,6 +6,7 @@ import {
   RiskAlertModel,
 } from "../db/models/index.js";
 import type { AlertSeverity } from "../domain/types.js";
+import { generateAssessmentSummary, loadClinicalContext } from "./gemini-clinical-service.js";
 import { createId } from "../utils/id.js";
 import { HttpError } from "../utils/http-error.js";
 
@@ -96,11 +97,8 @@ const ensureAIAssessment = async (params: {
   const existing = await AIAssessmentModel.findOne({ where: { prescriptionId: params.prescriptionId } });
   if (existing) return existing;
 
-  const summaryParts = [
-    `Paciente com ${params.record.conditions.join(", ") || "sem comorbidades registradas"}.`,
-    `Alergias: ${params.record.allergies.join(", ") || "nenhuma alergia registrada"}.`,
-    `Medicacoes atuais: ${params.record.currentMedications.join(", ") || "nenhuma medicacao ativa"}.`,
-  ];
+  const context = await loadClinicalContext(params.patientId);
+  const assessment = await generateAssessmentSummary(context, params.items);
 
   return AIAssessmentModel.create({
     id: createId("ai"),
@@ -111,18 +109,12 @@ const ensureAIAssessment = async (params: {
       medicalRecord: params.record,
     },
     outputSummary: {
-      summary: summaryParts.join(" "),
-      highlights: [
-        "Revisar possiveis interacoes antes da dispensacao.",
-        "Confirmar alergias com o paciente durante a consulta.",
-      ],
-      limitations: [
-        "Sintese automatica; nao substitui decisao medica.",
-        "Dependente da qualidade dos dados preenchidos no prontuario.",
-      ],
+      summary: assessment.summary,
+      highlights: assessment.highlights,
+      limitations: assessment.limitations,
     },
-    promptVersion: "anamnesis-v1",
-    modelVersion: "rule-assisted-v1",
+    promptVersion: "anamnesis-v2",
+    modelVersion: assessment.modelVersion,
     createdAt: new Date(),
   });
 };
@@ -139,13 +131,12 @@ export const runClinicalAnalysis = async (prescriptionId: string) => {
     PrescriptionItemModel.findAll({ where: { prescriptionId: prescription.id } }),
   ]);
 
-  if (!recordModel) throw new HttpError("Prontuario do paciente nao encontrado.", 404);
   if (itemModels.length === 0) throw new HttpError("Prescricao sem itens para analise.", 422);
 
   const record = {
-    allergies: recordModel.allergies,
-    conditions: recordModel.conditions,
-    currentMedications: recordModel.currentMedications,
+    allergies: recordModel?.allergies ?? [],
+    conditions: recordModel?.conditions ?? [],
+    currentMedications: recordModel?.currentMedications ?? [],
   };
 
   const items = itemModels.map((item) => ({
@@ -272,8 +263,6 @@ export const getAnamnesisByPrescription = async (prescriptionId: string) => {
     PrescriptionItemModel.findAll({ where: { prescriptionId } }),
   ]);
 
-  if (!recordModel) throw new HttpError("Prontuario do paciente nao encontrado.", 404);
-
   const assessment = await ensureAIAssessment({
     prescriptionId,
     patientId: prescription.patientId,
@@ -285,9 +274,9 @@ export const getAnamnesisByPrescription = async (prescriptionId: string) => {
       route: item.route,
     })),
     record: {
-      allergies: recordModel.allergies,
-      conditions: recordModel.conditions,
-      currentMedications: recordModel.currentMedications,
+      allergies: recordModel?.allergies ?? [],
+      conditions: recordModel?.conditions ?? [],
+      currentMedications: recordModel?.currentMedications ?? [],
     },
   });
 

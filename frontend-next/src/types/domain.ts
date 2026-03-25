@@ -27,6 +27,7 @@ export interface ApiErrorPayload {
 export interface Patient {
   id: string;
   userId: string;
+  name?: string;
   clinicId?: string;
   birthDate?: string;
   biologicalSex?: "masculino" | "feminino" | null;
@@ -50,7 +51,7 @@ export interface MedicalRecord {
   allergies: string[];
   conditions: string[];
   currentMedications: string[];
-  lastUpdatedAt: string;
+  lastUpdatedAt?: string | null;
 }
 
 export interface MedicalRecordHistoryEntry {
@@ -91,6 +92,14 @@ export interface Prescription {
   createdAt: string;
   updatedAt?: string;
   analyzedAt?: string;
+}
+
+export interface AssistedPrescriptionDraft {
+  patientName: string;
+  summary: string;
+  conduct: string;
+  items: PrescriptionItem[];
+  modelVersion: string;
 }
 
 export interface RiskAlert {

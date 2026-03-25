@@ -4,6 +4,8 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "2h",
   refreshSecret: process.env.REFRESH_SECRET ?? "dev-refresh-secret-change-me",
   refreshExpiresIn: process.env.REFRESH_EXPIRES_IN ?? "7d",
+  groqApiKey: process.env.GROQ_API_KEY ?? "",
+  groqModel: process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile",
   dbHost: process.env.DB_HOST ?? "127.0.0.1",
   dbPort: Number(process.env.DB_PORT ?? 3306),
   dbName: process.env.DB_NAME ?? "bjm_facens",

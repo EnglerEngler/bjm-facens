@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
-import type { PrescriptionItem } from "@/types/domain";
+import type { AssistedPrescriptionDraft, PrescriptionItem } from "@/types/domain";
 
 const itemSchema = z.object({
   medication: z.string().min(2, "Medicamento deve ter pelo menos 2 caracteres."),
@@ -20,6 +20,9 @@ const schema = z.object({
 
 interface Props {
   defaultPatientId?: string;
+  aiDraft?: AssistedPrescriptionDraft | null;
+  aiDraftLoading?: boolean;
+  aiDraftError?: string | null;
   onSubmit: (payload: { patientId: string; conduct?: string; items: PrescriptionItem[] }) => Promise<void>;
 }
 
@@ -31,13 +34,23 @@ const emptyItem: PrescriptionItem = {
   route: "oral",
 };
 
-export function PrescriptionForm({ defaultPatientId, onSubmit }: Props) {
+export function PrescriptionForm({ defaultPatientId, aiDraft, aiDraftLoading, aiDraftError, onSubmit }: Props) {
   const [patientId, setPatientId] = useState(defaultPatientId ?? "");
   const [conduct, setConduct] = useState("");
   const [items, setItems] = useState<PrescriptionItem[]>([{ ...emptyItem }]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setPatientId(defaultPatientId ?? "");
+  }, [defaultPatientId]);
+
+  useEffect(() => {
+    if (!aiDraft) return;
+    setConduct(aiDraft.conduct);
+    setItems(aiDraft.items.length > 0 ? aiDraft.items : [{ ...emptyItem }]);
+  }, [aiDraft]);
 
   const updateItem = (index: number, field: keyof PrescriptionItem, value: string) => {
     setItems((prev) => {
@@ -78,10 +91,23 @@ export function PrescriptionForm({ defaultPatientId, onSubmit }: Props) {
   return (
     <form className="card" onSubmit={submit}>
       <h3>Nova Prescrição</h3>
-      <label>
-        ID do Paciente
-        <input value={patientId} onChange={(e) => setPatientId(e.target.value)} placeholder="patient_123" />
-      </label>
+      {aiDraftLoading && <p className="muted">Gerando sugestao inicial com IA...</p>}
+
+      {aiDraft && (
+        <section className="card">
+          <h4>Resumo assistido por IA</h4>
+          <p>{aiDraft.summary}</p>
+        </section>
+      )}
+
+      {aiDraftError && <p className="error">{aiDraftError}</p>}
+
+      {!defaultPatientId && (
+        <label>
+          ID do Paciente
+          <input value={patientId} onChange={(e) => setPatientId(e.target.value)} placeholder="patient_123" />
+        </label>
+      )}
 
       <label>
         Conduta
