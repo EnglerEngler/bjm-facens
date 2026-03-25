@@ -8,15 +8,9 @@ import { apiRequest } from "@/lib/api-client";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
 import type { Patient } from "@/types/domain";
 
-const formatDate = (value?: string | null) => {
-  if (!value) return "Nascimento pendente";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("pt-BR");
-};
-
 const buildPatientSearch = (patient: Patient) =>
   [
+    patient.name ?? "",
     patient.id,
     patient.userId,
     patient.birthDate ?? "",
@@ -67,16 +61,13 @@ export default function DoctorDashboardPage() {
           <h1>Buscar paciente e abrir prontuario</h1>
           <p className="muted">Pesquise por qualquer termo disponivel do paciente e siga direto para o prontuario.</p>
         </div>
-        <Link href="/doctor/prescriptions/new" className="doctor-action-button doctor-action-button-primary">
-          Nova prescricao
-        </Link>
       </section>
 
       <section className="doctor-search card">
         <div className="doctor-search-heading">
           <div>
             <h2>Buscar paciente</h2>
-            <p className="muted">ID do perfil, usuario, nascimento, alergias, condicoes ou medicamentos em uso.</p>
+            <p className="muted">Nome, usuario, nascimento, alergias, condicoes ou medicamentos em uso.</p>
           </div>
           <span className="doctor-result-chip">{filteredPatients.length} paciente(s)</span>
         </div>
@@ -88,7 +79,7 @@ export default function DoctorDashboardPage() {
           id="doctor-dashboard-search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Ex.: patient_, user_, dipirona, hipertensao, 1990"
+          placeholder="Ex.: Maria, user_, dipirona, hipertensao, 1990"
           className="doctor-search-input"
         />
 
@@ -100,12 +91,8 @@ export default function DoctorDashboardPage() {
             {filteredPatients.map((patient) => (
               <article key={patient.id} className="doctor-patient-row">
                 <div className="doctor-patient-row-main">
-                  <strong>{patient.id}</strong>
+                  <strong>{patient.name?.trim() || patient.userId}</strong>
                   <p className="muted">Usuario: {patient.userId}</p>
-                </div>
-                <div className="doctor-patient-row-tags">
-                  <span>{formatDate(patient.birthDate)}</span>
-                  <span>{patient.record?.allergies.length ? `${patient.record.allergies.length} alergia(s)` : "Sem alergias"}</span>
                 </div>
                 <Link href={`/doctor/patients/${patient.id}`} className="doctor-action-button doctor-action-button-primary">
                   Abrir prontuario

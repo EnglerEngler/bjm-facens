@@ -3,9 +3,9 @@ import type { Prescription, PrescriptionItem } from "@/types/domain";
 
 export interface PatientPrescriptionView {
   id: string;
-  patientId: string;
   status: Prescription["status"];
   createdAt: string;
+  conduct?: string;
   items: PrescriptionItem[];
   orientation: string;
 }
@@ -16,15 +16,16 @@ export interface PatientPrescriptionResult {
 }
 
 const toOrientation = (prescription: Prescription): string => {
+  if (prescription.conduct?.trim()) return prescription.conduct.trim();
   const firstMedication = prescription.items[0]?.medication ?? "medicação prescrita";
   return `Siga a posologia conforme prescrição. Em caso de reação adversa com ${firstMedication}, contate seu médico.`;
 };
 
 const mapPrescription = (item: Prescription): PatientPrescriptionView => ({
   id: item.id,
-  patientId: item.patientId,
   status: item.status,
   createdAt: item.createdAt,
+  conduct: item.conduct,
   items: item.items,
   orientation: toOrientation(item),
 });
@@ -32,7 +33,7 @@ const mapPrescription = (item: Prescription): PatientPrescriptionView => ({
 export const loadPatientPrescriptions = async (): Promise<PatientPrescriptionResult> => {
   try {
     const byMe = await apiRequest<Prescription[]>("/patients/me/prescriptions");
-    return { items: byMe.map(mapPrescription), source: "api" };
+    return { items: byMe.filter((item) => item.status === "active").map(mapPrescription), source: "api" };
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
     if (![403, 404].includes(error.status)) throw error;
@@ -40,7 +41,7 @@ export const loadPatientPrescriptions = async (): Promise<PatientPrescriptionRes
 
   try {
     const generic = await apiRequest<Prescription[]>("/prescriptions");
-    return { items: generic.map(mapPrescription), source: "api" };
+    return { items: generic.filter((item) => item.status === "active").map(mapPrescription), source: "api" };
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
     if ([403, 404].includes(error.status)) {

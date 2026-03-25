@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { anamnesisBlocks, shouldDisplayQuestion } from "@/lib/anamnesis-questionnaire";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
-import type { MedicalRecord, MedicalRecordHistoryEntry, Patient, PatientAnamnesis } from "@/types/domain";
+import type { MedicalRecord, MedicalRecordHistoryEntry, Patient, PatientAnamnesis, Prescription } from "@/types/domain";
 
 interface PatientRecordPayload {
   patient: Patient;
@@ -44,6 +44,7 @@ export default function DoctorPatientRecordPage() {
 
   const [payload, setPayload] = useState<PatientRecordPayload | null>(null);
   const [history, setHistory] = useState<MedicalRecordHistoryEntry[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [anamnesisPayload, setAnamnesisPayload] = useState<PatientAnamnesisPayload | null>(null);
   const [anamnesisError, setAnamnesisError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,13 +57,15 @@ export default function DoctorPatientRecordPage() {
         setError(null);
         setAnamnesisError(null);
 
-        const [record, recordHistory] = await Promise.all([
+        const [record, recordHistory, patientPrescriptions] = await Promise.all([
           apiRequest<PatientRecordPayload>(`/patients/${patientId}/record`),
           apiRequest<MedicalRecordHistoryEntry[]>(`/patients/${patientId}/record/history`),
+          apiRequest<Prescription[]>(`/prescriptions?patientId=${patientId}`),
         ]);
 
         setPayload(record);
         setHistory(recordHistory);
+        setPrescriptions(patientPrescriptions);
 
         try {
           const anamnesis = await apiRequest<PatientAnamnesisPayload>(`/patients/${patientId}/anamnesis`);
@@ -106,14 +109,20 @@ export default function DoctorPatientRecordPage() {
   }, [anamnesisPayload]);
 
   const answeredCount = Object.values(anamnesisPayload?.anamnesis.answers ?? {}).filter((value) => value.trim()).length;
+  const patientDisplayName = payload?.patient.name?.trim() || anamnesisPayload?.patient.name?.trim() || patientId;
+  const hasStructuredRecord =
+    Boolean(payload?.record.lastUpdatedAt) ||
+    Boolean(payload?.record.allergies.length) ||
+    Boolean(payload?.record.conditions.length) ||
+    Boolean(payload?.record.currentMedications.length);
 
   return (
     <main className="doctor-dashboard">
       <section className="doctor-hero">
         <div>
-          <span className="doctor-kicker">Prontuario do paciente</span>
-          <h1>{payload?.patient.id ?? patientId}</h1>
-          <p className="muted">Informacoes do paciente, anamnese preenchida e historico recente em um unico fluxo.</p>
+          <span className="doctor-kicker">Revisao do paciente</span>
+          <h1>{patientDisplayName}</h1>
+          <p className="muted">Revise o contexto clinico e a anamnese antes de gerar uma nova prescricao.</p>
         </div>
         <div className="doctor-hero-actions">
           <Link href="/doctor/dashboard" className="doctor-action-button doctor-action-button-primary">
@@ -142,7 +151,7 @@ export default function DoctorPatientRecordPage() {
             <div className="doctor-facts-grid">
               <article className="doctor-fact-card">
                 <span className="doctor-fact-label">Perfil do paciente</span>
-                <strong>{payload.patient.id}</strong>
+                <strong>{payload.patient.name?.trim() || payload.patient.id}</strong>
                 <small>Usuario {payload.patient.userId}</small>
               </article>
               <article className="doctor-fact-card">
@@ -151,9 +160,9 @@ export default function DoctorPatientRecordPage() {
                 <small>Clinica {payload.patient.clinicId ?? "Nao informada"}</small>
               </article>
               <article className="doctor-fact-card">
-                <span className="doctor-fact-label">Ultima atualizacao</span>
-                <strong>{formatDateTime(payload.record.lastUpdatedAt)}</strong>
-                <small>Prontuario ativo</small>
+                <span className="doctor-fact-label">Status do prontuario</span>
+                <strong>{payload.record.lastUpdatedAt ? formatDateTime(payload.record.lastUpdatedAt) : "Sem prontuario salvo"}</strong>
+                <small>{hasStructuredRecord ? "Dados clinicos disponiveis" : "Use a anamnese como base para a prescricao"}</small>
               </article>
             </div>
 
@@ -198,7 +207,6 @@ export default function DoctorPatientRecordPage() {
                   <article className="doctor-fact-card">
                     <span className="doctor-fact-label">Atualizacao</span>
                     <strong>{formatDateTime(anamnesisPayload.anamnesis.updatedAt)}</strong>
-                    <small>Versao {anamnesisPayload.anamnesis.formVersion}</small>
                   </article>
                 </div>
 
@@ -224,6 +232,34 @@ export default function DoctorPatientRecordPage() {
           <section className="card doctor-record-card">
             <div className="doctor-record-header">
               <div>
+                <span className="doctor-section-label">Prescricoes</span>
+                <h2>Historico de prescricoes</h2>
+                <p className="muted">Consulte as prescricoes ja emitidas para este paciente antes de criar uma nova.</p>
+              </div>
+            </div>
+
+            {prescriptions.length === 0 ? (
+              <p className="muted">Nenhuma prescricao registrada para este paciente.</p>
+            ) : (
+              <div className="doctor-history-list">
+                {prescriptions.map((prescription) => (
+                  <article key={prescription.id} className="doctor-history-item">
+                    <strong>{formatDateTime(prescription.createdAt)}</strong>
+                    {prescription.conduct && <p>{prescription.conduct}</p>}
+                    <div className="doctor-history-actions">
+                      <Link href={`/doctor/prescriptions/${prescription.id}`} className="doctor-action-button doctor-action-button-primary">
+                        Ver detalhes da prescricao
+                      </Link>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="card doctor-record-card">
+            <div className="doctor-record-header">
+              <div>
                 <span className="doctor-section-label">Historico</span>
                 <h2>Alteracoes do prontuario</h2>
                 <p className="muted">Ultimos registros de modificacao para auditoria e acompanhamento.</p>
@@ -231,7 +267,7 @@ export default function DoctorPatientRecordPage() {
             </div>
 
             {history.length === 0 ? (
-              <p className="muted">Sem alteracoes registradas.</p>
+              <p className="muted">Sem alteracoes registradas. Se ainda nao houver prontuario estruturado, revise a anamnese e siga para a prescricao.</p>
             ) : (
               <div className="doctor-history-list">
                 {history.map((entry) => (

@@ -157,11 +157,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         Dashboard Médico
                       </Link>
                     )}
-                    {canAccessDoctorDashboard && (
-                      <Link href="/doctor/profile" className="menu-link">
-                        Meu Perfil
-                      </Link>
-                    )}
                     {canAccessPatientDashboard && (
                       <Link href="/patient/dashboard" className="menu-link">
                         Dashboard Paciente
@@ -172,29 +167,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         Anamnese
                       </Link>
                     )}
-                    {canAccessPatientDashboard && (
-                      <Link href="/patient/profile" className="menu-link">
-                        Meu Perfil
-                      </Link>
-                    )}
                     {canAccessAdminArea && (
                       <Link href="/admin/dashboard" className="menu-link">
                         Dashboard Admin
                       </Link>
                     )}
-                    {canAccessAdminArea && (
-                      <Link href="/admin/profile" className="menu-link">
-                        Meu Perfil
-                      </Link>
-                    )}
                     {canAccessClinicAdminArea && (
                       <Link href="/clinic/dashboard" className="menu-link">
                         Dashboard Clínica
-                      </Link>
-                    )}
-                    {canAccessClinicAdminArea && (
-                      <Link href="/clinic/profile" className="menu-link">
-                        Perfil da Clínica
                       </Link>
                     )}
                     {canAccessAudit && (

@@ -13,6 +13,7 @@ import { authMiddleware, requireRole } from "../middleware/auth-middleware.js";
 import { addAuditLog } from "../services/audit-service.js";
 import { createId } from "../utils/id.js";
 import { HttpError } from "../utils/http-error.js";
+import { createSimplePdfBuffer } from "../utils/simple-pdf.js";
 
 const updateRecordSchema = z.object({
   allergies: z.array(z.string().min(2)).optional(),
@@ -121,6 +122,61 @@ patientRoutes.get("/me/prescriptions", requireRole("patient"), async (req, res, 
     });
 
     res.json(prescriptions);
+  } catch (error) {
+    next(error);
+  }
+});
+
+patientRoutes.get("/me/prescriptions/:prescriptionId", requireRole("patient"), async (req, res, next) => {
+  try {
+    const patient = await PatientModel.findOne({
+      where: { userId: req.auth!.userId },
+    });
+    if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
+
+    const prescription = await PrescriptionModel.findOne({
+      where: { id: String(req.params.prescriptionId), patientId: patient.id },
+      include: [{ model: PrescriptionItemModel, as: "items" }],
+    });
+
+    if (!prescription) throw new HttpError("Prescricao nao encontrada.", 404);
+
+    res.json(prescription);
+  } catch (error) {
+    next(error);
+  }
+});
+
+patientRoutes.get("/me/prescriptions/:prescriptionId/pdf", requireRole("patient"), async (req, res, next) => {
+  try {
+    const patient = await PatientModel.findOne({
+      where: { userId: req.auth!.userId },
+    });
+    if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
+
+    const prescription = await PrescriptionModel.findOne({
+      where: { id: String(req.params.prescriptionId), patientId: patient.id },
+      include: [{ model: PrescriptionItemModel, as: "items" }],
+    });
+
+    if (!prescription) throw new HttpError("Prescricao nao encontrada.", 404);
+
+    const patientUser = await UserModel.findByPk(patient.userId);
+    const pdfBuffer = createSimplePdfBuffer({
+      patientName: patientUser?.name?.trim() || "Paciente",
+      createdAt: prescription.createdAt.toISOString(),
+      conduct: prescription.conduct?.trim() || "Sem conduta registrada.",
+      items: prescription.items.map((item) => ({
+        medication: item.medication,
+        dose: item.dose,
+        frequency: item.frequency,
+        duration: item.duration,
+        route: item.route,
+      })),
+    });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="prescricao-${prescription.id}.pdf"`);
+    res.send(pdfBuffer);
   } catch (error) {
     next(error);
   }
@@ -285,9 +341,12 @@ patientRoutes.get("/", requireRole("doctor", "admin", "clinic_admin"), async (re
     const where = req.auth?.role === "admin" ? {} : { clinicId: req.auth?.clinicId };
     const patients = await PatientModel.findAll({ where });
     const records = await MedicalRecordModel.findAll();
+    const users = await UserModel.findAll();
+    const userNameById = new Map(users.map((user) => [user.id, user.name]));
 
     const items = patients.map((patient) => ({
       ...patient.toJSON(),
+      name: userNameById.get(patient.userId) ?? "",
       record: records.find((mr) => mr.patientId === patient.id)?.toJSON() ?? null,
     }));
     res.json(items);
@@ -367,9 +426,21 @@ patientRoutes.get("/:patientId/record", requireRole("doctor", "admin", "clinic_a
     }
 
     const record = await MedicalRecordModel.findByPk(patientId);
-    if (!record) throw new HttpError("Prontuario nao encontrado.", 404);
+    const user = await UserModel.findByPk(patient.userId);
 
-    res.json({ patient, record });
+    res.json({
+      patient: {
+        ...patient.toJSON(),
+        name: user?.name ?? "",
+      },
+      record: record?.toJSON() ?? {
+        patientId: patient.id,
+        allergies: [],
+        conditions: [],
+        currentMedications: [],
+        lastUpdatedAt: null,
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -449,6 +520,7 @@ patientRoutes.get("/:patientId/anamnesis", requireRole("doctor", "admin", "clini
 
     const anamnesis = await PatientAnamnesisModel.findByPk(patient.id);
     if (!anamnesis) throw new HttpError("Anamnese do paciente ainda nao foi preenchida.", 404);
+    const user = await UserModel.findByPk(patient.userId);
 
     addAuditLog({
       actorUserId: req.auth!.userId,
@@ -458,7 +530,13 @@ patientRoutes.get("/:patientId/anamnesis", requireRole("doctor", "admin", "clini
       ip: req.ip,
     });
 
-    res.json({ patient, anamnesis });
+    res.json({
+      patient: {
+        ...patient.toJSON(),
+        name: user?.name ?? "",
+      },
+      anamnesis,
+    });
   } catch (error) {
     next(error);
   }

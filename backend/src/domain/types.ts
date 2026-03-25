@@ -34,7 +34,7 @@ export interface MedicalRecord {
   allergies: string[];
   conditions: string[];
   currentMedications: string[];
-  lastUpdatedAt: string;
+  lastUpdatedAt?: string | null;
 }
 
 export interface MedicalRecordHistoryEntry {

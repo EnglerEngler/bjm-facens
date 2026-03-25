@@ -16,12 +16,6 @@ const formatDate = (value: string) => {
   return date.toLocaleDateString("pt-BR");
 };
 
-const formatStatus = (value: PatientPrescriptionView["status"]) => {
-  if (value === "active") return "Ativa";
-  if (value === "cancelled") return "Cancelada";
-  return "Rascunho";
-};
-
 export default function PatientDashboardPage() {
   useAuthRedirect();
 
@@ -139,15 +133,31 @@ export default function PatientDashboardPage() {
             ) : (
               <div className="doctor-patient-list">
                 {prescriptions.map((rx) => (
-                  <article key={rx.id} className="doctor-patient-row">
+                  <article key={rx.id} className="doctor-patient-row patient-prescription-card">
                     <div className="doctor-patient-row-main">
-                      <strong>Prescricao {rx.id}</strong>
+                      <strong>Prescricao liberada em {formatDate(rx.createdAt)}</strong>
                       <p className="muted">{rx.orientation}</p>
+                      {rx.items.length > 0 ? (
+                        <div className="patient-prescription-items">
+                          {rx.items.map((item, index) => (
+                            <div key={`${rx.id}-${item.medication}-${index}`} className="patient-prescription-item">
+                              <strong>{item.medication}</strong>
+                              <p className="muted">
+                                {item.dose} • {item.frequency} • {item.duration} • {item.route}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      <div className="patient-prescription-actions">
+                        <Link href={`/patient/prescriptions/${rx.id}`} className="doctor-action-button doctor-action-button-primary">
+                          Abrir prescricao
+                        </Link>
+                      </div>
                     </div>
                     <div className="doctor-patient-row-tags">
-                      <span>{formatStatus(rx.status)}</span>
                       <span>{rx.items.length} item(ns)</span>
-                      <span>{formatDate(rx.createdAt)}</span>
+                      <span>Liberada</span>
                     </div>
                   </article>
                 ))}

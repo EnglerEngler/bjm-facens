@@ -42,24 +42,13 @@ export default function DoctorPatientAnamnesisPage() {
 
   return (
     <main>
-      <h1>Anamnese Completa do Paciente</h1>
-      <p className="muted">Paciente: {patientId}</p>
+      <h1>Anamnese de {payload?.patient.name?.trim() || patientId}</h1>
 
       {loading && <p>Carregando anamnese...</p>}
       {error && <p className="error">{error}</p>}
 
       {payload && (
         <>
-          <section className="card">
-            <p>
-              <strong>Anamnese:</strong> registro unico editavel do paciente
-            </p>
-            <p className="muted">
-              Última atualização:{" "}
-              {payload.anamnesis.updatedAt ? new Date(payload.anamnesis.updatedAt).toLocaleString() : "Sem atualização"}
-            </p>
-          </section>
-
           {anamnesisBlocks.map((block) => (
             <section key={block.id} className="card">
               <h3>{block.title}</h3>

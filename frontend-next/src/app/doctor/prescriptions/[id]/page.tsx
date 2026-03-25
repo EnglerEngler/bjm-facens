@@ -4,12 +4,10 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { AlertBadge } from "@/components/alert-badge";
-import { AlertDecisionForm } from "@/components/alert-decision-form";
+import { useEffect, useState } from "react";
 import { apiRequest } from "@/lib/api-client";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
-import type { Prescription, RiskAlert } from "@/types/domain";
+import type { Prescription } from "@/types/domain";
 
 export default function PrescriptionDetailsPage() {
   useAuthRedirect();
@@ -17,53 +15,31 @@ export default function PrescriptionDetailsPage() {
   const params = useParams<{ id: string }>();
   const prescriptionId = params.id;
   const [prescription, setPrescription] = useState<Prescription | null>(null);
-  const [alerts, setAlerts] = useState<RiskAlert[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [rx, alertList] = await Promise.all([
-        apiRequest<Prescription>(`/prescriptions/${prescriptionId}`),
-        apiRequest<RiskAlert[]>(`/prescriptions/${prescriptionId}/alerts`),
-      ]);
-      setPrescription(rx);
-      setAlerts(alertList);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao carregar prescrição.");
-    } finally {
-      setLoading(false);
-    }
-  }, [prescriptionId]);
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    const run = async () => {
+      try {
+        setLoading(true);
+        const rx = await apiRequest<Prescription>(`/prescriptions/${prescriptionId}`);
+        setPrescription(rx);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Falha ao carregar prescrição.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const decide = async (
-    alertId: string,
-    payload: { action: "accepted" | "reviewed" | "ignored"; justification?: string },
-  ) => {
-    try {
-      await apiRequest(`/prescriptions/alerts/${alertId}/decision`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      setStatusMessage("Decisão registrada com sucesso.");
-      await loadData();
-    } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Falha ao registrar decisão.");
-    }
-  };
+    void run();
+  }, [prescriptionId]);
 
   return (
     <main>
       <h1>Detalhes da Prescrição</h1>
       <p className="muted">ID: {prescriptionId}</p>
-      <Link href={`/doctor/anamnesis/${prescriptionId}`}>Ver anamnese IA detalhada</Link>
+      <Link href={`/doctor/anamnesis/${prescriptionId}`}>Ver prescrição de IA detalhada</Link>
 
       {loading && <p>Carregando...</p>}
       {error && <p className="error">{error}</p>}
@@ -81,23 +57,6 @@ export default function PrescriptionDetailsPage() {
           {prescription.conduct && <p><strong>Conduta:</strong> {prescription.conduct}</p>}
         </section>
       )}
-
-      <section className="card">
-        <h3>Alertas Clínicos</h3>
-        {alerts.length === 0 && <p className="muted">Sem alertas para esta prescrição.</p>}
-        {alerts.map((alert) => (
-          <article key={alert.id} className="card">
-            <div className="between">
-              <strong>{alert.ruleCode}</strong>
-              <AlertBadge severity={alert.severity} />
-            </div>
-            <p>{alert.message}</p>
-            <p className="muted">Status: {alert.status}</p>
-            <AlertDecisionForm alert={alert} onSubmit={(payload) => decide(alert.id, payload)} />
-          </article>
-        ))}
-        {statusMessage && <p className="muted">{statusMessage}</p>}
-      </section>
     </main>
   );
 }
