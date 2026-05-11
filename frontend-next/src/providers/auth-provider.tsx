@@ -8,7 +8,7 @@ import type { AuthSession, User, UserRole } from "@/types/domain";
 interface AuthContextValue {
   session: AuthSession | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<AuthSession>;
+  login: (email: string, password: string, rememberMe: boolean) => Promise<AuthSession>;
   register: (payload: {
     name: string;
     email: string;
@@ -33,15 +33,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean) => {
     const result = await apiRequest<AuthSession>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
       auth: false,
     });
-    writeSession(result);
-    setSession(result);
-    return result;
+    const nextSession = { ...result, rememberMe };
+    writeSession(nextSession);
+    setSession(nextSession);
+    return nextSession;
   };
 
   const register = async (payload: {

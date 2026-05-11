@@ -26,6 +26,7 @@ export interface Patient {
   id: string;
   userId: string;
   clinicId?: string;
+  cpf?: string | null;
   birthDate?: string;
 }
 

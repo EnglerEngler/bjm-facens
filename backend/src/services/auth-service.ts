@@ -182,10 +182,10 @@ export const loginUser = async (payload: { email: string; password: string }) =>
   const user = await UserModel.findOne({
     where: { email: payload.email.toLowerCase() },
   });
-  if (!user) throw new HttpError("Credenciais invalidas.", 401);
+  if (!user) throw new HttpError("E-mail nao cadastrado.", 401);
 
   const isValid = await bcrypt.compare(payload.password, user.passwordHash);
-  if (!isValid) throw new HttpError("Credenciais invalidas.", 401);
+  if (!isValid) throw new HttpError("Senha incorreta.", 401);
 
   const token = jwt.sign({ sub: user.id, role: user.role, clinicId: user.clinicId }, env.jwtSecret, {
     expiresIn: env.jwtExpiresIn as SignOptions["expiresIn"],

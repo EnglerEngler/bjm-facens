@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api-client";
 import { pushFlashToast } from "@/lib/flash-toast";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
+import { digitsOnly, formatCep, formatCpf, formatPhone } from "@/lib/patient-fields";
 import { roleDefaultPath } from "@/lib/role-utils";
 import { useAuth } from "@/providers/auth-provider";
 import type { Patient, User } from "@/types/domain";
@@ -18,6 +19,7 @@ interface AccountFormState {
 }
 
 interface PatientProfileFormState {
+  cpf: string;
   birthDate: string;
   biologicalSex: "masculino" | "feminino" | "";
   phone: string;
@@ -42,23 +44,10 @@ interface ViaCepResponse {
   erro?: boolean;
 }
 
-const digitsOnly = (value: string) => value.replace(/\D/g, "");
-
-const formatPhone = (value: string) => {
-  const digits = digitsOnly(value).slice(0, 11);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-};
-
-const formatCep = (value: string) => {
-  const digits = digitsOnly(value).slice(0, 8);
-  if (digits.length <= 5) return digits;
-  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
-};
+type ZipCodeValidationResult = "valid" | "invalid" | "unavailable";
 
 const emptyProfileForm: PatientProfileFormState = {
+  cpf: "",
   birthDate: "",
   biologicalSex: "",
   phone: "",
@@ -74,6 +63,7 @@ const emptyProfileForm: PatientProfileFormState = {
 };
 
 const toProfileFormState = (patient: Patient): PatientProfileFormState => ({
+  cpf: patient.cpf ? formatCpf(patient.cpf) : "",
   birthDate: patient.birthDate ?? "",
   biologicalSex: patient.biologicalSex ?? "",
   phone: patient.phone ?? "",
@@ -103,12 +93,14 @@ export default function PatientProfilePage() {
   const [saving, setSaving] = useState(false);
   const [loadingZipCode, setLoadingZipCode] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [statusTone, setStatusTone] = useState<"error" | "info">("info");
 
   useEffect(() => {
     const run = async () => {
       try {
         setLoading(true);
         setStatus(null);
+        setStatusTone("info");
         const profile = await apiRequest<Patient>("/patients/me/profile");
         setPatient(profile);
         setProfileForm(toProfileFormState(profile));
@@ -117,6 +109,7 @@ export default function PatientProfilePage() {
           email: session?.user.email ?? "",
         });
       } catch (err) {
+        setStatusTone("error");
         setStatus(err instanceof Error ? err.message : "Falha ao carregar perfil.");
       } finally {
         setLoading(false);
@@ -133,9 +126,9 @@ export default function PatientProfilePage() {
     }));
   };
 
-  const applyZipCode = async (rawZipCode: string) => {
+  const validateZipCode = async (rawZipCode: string, autofill = false): Promise<ZipCodeValidationResult> => {
     const zipCode = digitsOnly(rawZipCode);
-    if (zipCode.length !== 8) return;
+    if (zipCode.length !== 8) return "valid";
 
     try {
       setLoadingZipCode(true);
@@ -143,25 +136,36 @@ export default function PatientProfilePage() {
       const payload = (await response.json()) as ViaCepResponse;
 
       if (!response.ok || payload.erro) {
-        setStatus("CEP nao encontrado. Preencha o endereco manualmente.");
-        return;
+        setStatusTone("error");
+        setStatus("CEP invalido. Revise o numero informado antes de salvar.");
+        return "invalid";
       }
 
-      setProfileForm((current) => ({
-        ...current,
-        addressZipCode: formatCep(zipCode),
-        addressStreet: payload.logradouro?.trim() || current.addressStreet,
-        addressComplement: current.addressComplement || payload.complemento?.trim() || "",
-        addressNeighborhood: payload.bairro?.trim() || current.addressNeighborhood,
-        addressCity: payload.localidade?.trim() || current.addressCity,
-        addressState: payload.uf?.trim().toUpperCase() || current.addressState,
-      }));
+      if (autofill) {
+        setProfileForm((current) => ({
+          ...current,
+          addressZipCode: formatCep(zipCode),
+          addressStreet: payload.logradouro?.trim() || current.addressStreet,
+          addressComplement: current.addressComplement || payload.complemento?.trim() || "",
+          addressNeighborhood: payload.bairro?.trim() || current.addressNeighborhood,
+          addressCity: payload.localidade?.trim() || current.addressCity,
+          addressState: payload.uf?.trim().toUpperCase() || current.addressState,
+        }));
+      }
       setStatus(null);
+      setStatusTone("info");
+      return "valid";
     } catch {
+      setStatusTone("info");
       setStatus("Nao foi possivel consultar o CEP agora. Preencha o endereco manualmente.");
+      return "unavailable";
     } finally {
       setLoadingZipCode(false);
     }
+  };
+
+  const applyZipCode = async (rawZipCode: string) => {
+    await validateZipCode(rawZipCode, true);
   };
 
   const submitProfile = async (event: React.FormEvent) => {
@@ -170,6 +174,9 @@ export default function PatientProfilePage() {
     try {
       setSaving(true);
       setStatus(null);
+      setStatusTone("info");
+      const zipCodeValidation = await validateZipCode(profileForm.addressZipCode);
+      if (zipCodeValidation === "invalid") return;
 
       const updatedUser = await apiRequest<User>("/auth/me", {
         method: "PUT",
@@ -179,6 +186,7 @@ export default function PatientProfilePage() {
         method: "PUT",
         body: JSON.stringify({
           ...profileForm,
+          cpf: digitsOnly(profileForm.cpf),
           phone: digitsOnly(profileForm.phone),
           addressZipCode: digitsOnly(profileForm.addressZipCode),
           addressState: profileForm.addressState.toUpperCase(),
@@ -195,6 +203,7 @@ export default function PatientProfilePage() {
       pushFlashToast("Perfil atualizado com sucesso.");
       router.push(roleDefaultPath("patient"));
     } catch (err) {
+      setStatusTone("error");
       setStatus(err instanceof Error ? err.message : "Falha ao atualizar conta e perfil.");
     } finally {
       setSaving(false);
@@ -215,6 +224,16 @@ export default function PatientProfilePage() {
         <p>Carregando perfil...</p>
       ) : (
         <>
+          {!patient?.onboardingCompleted && (
+            <section className="card profile-pending-alert" role="alert">
+              <strong>Cadastro pendente</strong>
+              <p>
+                Seu acesso ainda depende da conclusao do cadastro. Revise e preencha todos os campos obrigatorios,
+                incluindo CPF, para liberar o dashboard normalmente.
+              </p>
+            </section>
+          )}
+
           <form className="patient-onboarding-form" onSubmit={submitProfile}>
             <section className="card doctor-record-card">
               <div className="doctor-record-header">
@@ -256,6 +275,17 @@ export default function PatientProfilePage() {
               <section className="doctor-anamnesis-card">
                 <h3>Dados pessoais</h3>
                 <div className="patient-onboarding-grid">
+                  <label>
+                    CPF
+                    <input
+                      value={profileForm.cpf}
+                      onChange={(event) => setProfileField("cpf", formatCpf(event.target.value))}
+                      placeholder="000.000.000-00"
+                      inputMode="numeric"
+                      maxLength={14}
+                      required
+                    />
+                  </label>
                   <label>
                     Data de nascimento
                     <input type="date" value={profileForm.birthDate} onChange={(event) => setProfileField("birthDate", event.target.value)} required />
@@ -355,6 +385,12 @@ export default function PatientProfilePage() {
               </section>
 
               <div className="patient-onboarding-actions patient-profile-actions">
+                {status && (
+                  <div className={`form-inline-alert ${statusTone === "error" ? "error" : "info"}`} role={statusTone === "error" ? "alert" : "status"}>
+                    <strong>{statusTone === "error" ? "Nao foi possivel salvar" : "Aviso sobre o CEP"}</strong>
+                    <span>{status}</span>
+                  </div>
+                )}
                 <button type="submit" disabled={saving} className="doctor-action-button doctor-action-button-primary">
                   {saving ? "Salvando..." : "Salvar perfil e conta"}
                 </button>
@@ -389,7 +425,6 @@ export default function PatientProfilePage() {
           </section>
 
           {loadingZipCode && <p className="muted">Buscando endereco pelo CEP...</p>}
-          {status && <p className="muted">{status}</p>}
         </>
       )}
     </main>

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "@/lib/api-client";
 import { pushFlashToast } from "@/lib/flash-toast";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
+import { digitsOnly, formatCpf, matchesSearch } from "@/lib/patient-fields";
 import type { AdminDashboardClinic, ClinicManagedUser } from "@/types/domain";
 
 type ManagedClinicUser = ClinicManagedUser & {
@@ -19,6 +20,7 @@ type CreateUserForm = {
   email: string;
   password: string;
   role: "doctor" | "patient";
+  cpf: string;
   birthDate: string;
 };
 
@@ -34,6 +36,7 @@ const emptyCreateForm: CreateUserForm = {
   email: "",
   password: "",
   role: "doctor",
+  cpf: "",
   birthDate: "",
 };
 
@@ -51,7 +54,7 @@ export default function ClinicDashboardPage() {
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [createForm, setCreateForm] = useState<CreateUserForm>(emptyCreateForm);
-  const [editForm, setEditForm] = useState({ name: "", email: "", password: "", birthDate: "" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", password: "", cpf: "", birthDate: "" });
 
   useEffect(() => {
     const run = async () => {
@@ -81,6 +84,7 @@ export default function ClinicDashboardPage() {
     return clinics.flatMap((clinicItem) => [
       ...clinicItem.doctors.map((doctor) => ({
         ...doctor,
+        cpf: null,
         birthDate: null,
         clinicId: clinicItem.clinicId,
         clinicName: clinicItem.clinicName,
@@ -96,13 +100,10 @@ export default function ClinicDashboardPage() {
   }, [clinics]);
 
   const filteredUsers = useMemo(() => {
-    const text = query.trim().toLowerCase();
-    if (!text) return users;
+    if (!query.trim()) return users;
 
     return users.filter((user) =>
-      [user.name, user.email, user.userId, user.id, user.birthDate ?? "", user.role, user.clinicName, user.joinCode].some((value) =>
-        value.toLowerCase().includes(text),
-      ),
+      matchesSearch(query, user.name, user.email, user.userId, user.id, user.cpf ?? "", user.birthDate ?? "", user.role, user.clinicName, user.joinCode),
     );
   }, [users, query]);
 
@@ -119,7 +120,7 @@ export default function ClinicDashboardPage() {
 
   useEffect(() => {
     if (!selectedUser) {
-      setEditForm({ name: "", email: "", password: "", birthDate: "" });
+      setEditForm({ name: "", email: "", password: "", cpf: "", birthDate: "" });
       return;
     }
 
@@ -127,6 +128,7 @@ export default function ClinicDashboardPage() {
       name: selectedUser.name,
       email: selectedUser.email,
       password: "",
+      cpf: selectedUser.cpf ? formatCpf(selectedUser.cpf) : "",
       birthDate: selectedUser.birthDate ?? "",
     });
   }, [selectedUser]);
@@ -154,6 +156,7 @@ export default function ClinicDashboardPage() {
             name: nextUser.name,
             email: nextUser.email,
             role: "patient",
+            cpf: nextUser.cpf,
             birthDate: nextUser.birthDate,
           });
         }
@@ -177,6 +180,7 @@ export default function ClinicDashboardPage() {
           email: createForm.email,
           password: createForm.password,
           role: createForm.role,
+          cpf: createForm.role === "patient" ? digitsOnly(createForm.cpf) || null : undefined,
           birthDate: createForm.role === "patient" ? createForm.birthDate || null : undefined,
         }),
       });
@@ -207,6 +211,7 @@ export default function ClinicDashboardPage() {
           name: editForm.name,
           email: editForm.email,
           password: editForm.password || undefined,
+          cpf: selectedUser.role === "patient" ? digitsOnly(editForm.cpf) || null : undefined,
           birthDate: selectedUser.role === "patient" ? editForm.birthDate || null : undefined,
         }),
       });
@@ -273,7 +278,7 @@ export default function ClinicDashboardPage() {
         <div className="doctor-search-heading">
           <div>
             <h2>Equipe e pacientes</h2>
-            <p className="muted">Pesquise por nome, e-mail, role, identificadores ou nascimento.</p>
+            <p className="muted">Pesquise por nome, e-mail, role, CPF, identificadores ou nascimento.</p>
           </div>
         </div>
 
@@ -302,7 +307,7 @@ export default function ClinicDashboardPage() {
           id="clinic-dashboard-search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Ex.: maria@clinica.com, patient_, doctor, 1990-08-16"
+          placeholder="Ex.: maria@clinica.com, 123.456.789-00, patient_, doctor, 1990-08-16"
           className="doctor-search-input"
         />
 
@@ -327,7 +332,7 @@ export default function ClinicDashboardPage() {
                   </span>
                   <span className="muted">{user.email}</span>
                   <span className="doctor-patient-card-meta">
-                    {user.role === "doctor" ? "Perfil medico" : "Perfil paciente"} · User {user.userId}
+                    {user.role === "doctor" ? "Perfil medico" : `Perfil paciente · CPF ${user.cpf ? formatCpf(user.cpf) : "pendente"}`} · User {user.userId}
                   </span>
                 </button>
               );
@@ -383,6 +388,7 @@ export default function ClinicDashboardPage() {
                     setCreateForm((current) => ({
                       ...current,
                       role: event.target.value as "doctor" | "patient",
+                      cpf: event.target.value === "patient" ? current.cpf : "",
                       birthDate: event.target.value === "patient" ? current.birthDate : "",
                     }))
                   }
@@ -393,14 +399,26 @@ export default function ClinicDashboardPage() {
               </label>
 
               {createForm.role === "patient" && (
-                <label>
-                  Nascimento
-                  <input
-                    type="date"
-                    value={createForm.birthDate}
-                    onChange={(event) => setCreateForm((current) => ({ ...current, birthDate: event.target.value }))}
-                  />
-                </label>
+                <>
+                  <label>
+                    CPF
+                    <input
+                      value={createForm.cpf}
+                      onChange={(event) => setCreateForm((current) => ({ ...current, cpf: formatCpf(event.target.value) }))}
+                      placeholder="000.000.000-00"
+                      inputMode="numeric"
+                      maxLength={14}
+                    />
+                  </label>
+                  <label>
+                    Nascimento
+                    <input
+                      type="date"
+                      value={createForm.birthDate}
+                      onChange={(event) => setCreateForm((current) => ({ ...current, birthDate: event.target.value }))}
+                    />
+                  </label>
+                </>
               )}
 
               <button type="submit" className="doctor-action-button doctor-action-button-primary" disabled={creating}>
@@ -461,14 +479,26 @@ export default function ClinicDashboardPage() {
                   </label>
 
                   {selectedUser.role === "patient" && (
-                    <label>
-                      Nascimento
-                      <input
-                        type="date"
-                        value={editForm.birthDate}
-                        onChange={(event) => setEditForm((current) => ({ ...current, birthDate: event.target.value }))}
-                      />
-                    </label>
+                    <>
+                      <label>
+                        CPF
+                        <input
+                          value={editForm.cpf}
+                          onChange={(event) => setEditForm((current) => ({ ...current, cpf: formatCpf(event.target.value) }))}
+                          placeholder="000.000.000-00"
+                          inputMode="numeric"
+                          maxLength={14}
+                        />
+                      </label>
+                      <label>
+                        Nascimento
+                        <input
+                          type="date"
+                          value={editForm.birthDate}
+                          onChange={(event) => setEditForm((current) => ({ ...current, birthDate: event.target.value }))}
+                        />
+                      </label>
+                    </>
                   )}
 
                   <label>

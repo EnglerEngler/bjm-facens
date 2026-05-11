@@ -5,6 +5,7 @@ export class PatientModel extends Model<InferAttributes<PatientModel>, InferCrea
   declare id: string;
   declare userId: string;
   declare clinicId: string | null;
+  declare cpf: string | null;
   declare birthDate: Date | null;
   declare biologicalSex: "masculino" | "feminino" | null;
   declare phone: string | null;
@@ -37,6 +38,10 @@ PatientModel.init(
       type: DataTypes.STRING(50),
       allowNull: true,
       field: "clinic_id",
+    },
+    cpf: {
+      type: DataTypes.STRING(11),
+      allowNull: true,
     },
     birthDate: {
       type: DataTypes.DATEONLY,

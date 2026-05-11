@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api-client";
 import { pushFlashToast } from "@/lib/flash-toast";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
+import { digitsOnly, formatCep, formatCpf, formatPhone } from "@/lib/patient-fields";
 import { useAuth } from "@/providers/auth-provider";
 import type { Patient, User } from "@/types/domain";
 
@@ -25,7 +26,10 @@ interface ViaCepResponse {
   erro?: boolean;
 }
 
+type ZipCodeValidationResult = "valid" | "invalid" | "unavailable";
+
 interface PatientProfileFormState {
+  cpf: string;
   birthDate: string;
   biologicalSex: "masculino" | "feminino" | "";
   phone: string;
@@ -41,6 +45,7 @@ interface PatientProfileFormState {
 }
 
 const emptyForm: PatientProfileFormState = {
+  cpf: "",
   birthDate: "",
   biologicalSex: "",
   phone: "",
@@ -56,6 +61,7 @@ const emptyForm: PatientProfileFormState = {
 };
 
 const toFormState = (patient: Patient): PatientProfileFormState => ({
+  cpf: patient.cpf ? formatCpf(patient.cpf) : "",
   birthDate: patient.birthDate ?? "",
   biologicalSex: patient.biologicalSex ?? "",
   phone: patient.phone ?? "",
@@ -69,22 +75,6 @@ const toFormState = (patient: Patient): PatientProfileFormState => ({
   emergencyContactName: patient.emergencyContactName ?? "",
   emergencyContactPhone: patient.emergencyContactPhone ?? "",
 });
-
-const digitsOnly = (value: string) => value.replace(/\D/g, "");
-
-const formatPhone = (value: string) => {
-  const digits = digitsOnly(value).slice(0, 11);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-};
-
-const formatCep = (value: string) => {
-  const digits = digitsOnly(value).slice(0, 8);
-  if (digits.length <= 5) return digits;
-  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
-};
 
 export default function PatientOnboardingPage() {
   useAuthRedirect({ allowIncompleteOnboarding: true });
@@ -100,12 +90,14 @@ export default function PatientOnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [loadingZipCode, setLoadingZipCode] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [statusTone, setStatusTone] = useState<"error" | "info">("info");
 
   useEffect(() => {
     const run = async () => {
       try {
         setLoading(true);
         setStatus(null);
+        setStatusTone("info");
         const patient = await apiRequest<Patient>("/patients/me/profile");
         setForm(toFormState(patient));
         setAccountForm({
@@ -113,6 +105,7 @@ export default function PatientOnboardingPage() {
           email: session?.user.email ?? "",
         });
       } catch (err) {
+        setStatusTone("error");
         setStatus(err instanceof Error ? err.message : "Falha ao carregar seu cadastro.");
       } finally {
         setLoading(false);
@@ -129,9 +122,9 @@ export default function PatientOnboardingPage() {
     }));
   };
 
-  const applyZipCode = async (rawZipCode: string) => {
+  const validateZipCode = async (rawZipCode: string, autofill = false): Promise<ZipCodeValidationResult> => {
     const zipCode = digitsOnly(rawZipCode);
-    if (zipCode.length !== 8) return;
+    if (zipCode.length !== 8) return "valid";
 
     try {
       setLoadingZipCode(true);
@@ -139,25 +132,36 @@ export default function PatientOnboardingPage() {
       const payload = (await response.json()) as ViaCepResponse;
 
       if (!response.ok || payload.erro) {
-        setStatus("CEP nao encontrado. Preencha o endereco manualmente.");
-        return;
+        setStatusTone("error");
+        setStatus("CEP invalido. Revise o numero informado antes de salvar.");
+        return "invalid";
       }
 
-      setForm((current) => ({
-        ...current,
-        addressZipCode: formatCep(zipCode),
-        addressStreet: payload.logradouro?.trim() || current.addressStreet,
-        addressComplement: current.addressComplement || payload.complemento?.trim() || "",
-        addressNeighborhood: payload.bairro?.trim() || current.addressNeighborhood,
-        addressCity: payload.localidade?.trim() || current.addressCity,
-        addressState: payload.uf?.trim().toUpperCase() || current.addressState,
-      }));
+      if (autofill) {
+        setForm((current) => ({
+          ...current,
+          addressZipCode: formatCep(zipCode),
+          addressStreet: payload.logradouro?.trim() || current.addressStreet,
+          addressComplement: current.addressComplement || payload.complemento?.trim() || "",
+          addressNeighborhood: payload.bairro?.trim() || current.addressNeighborhood,
+          addressCity: payload.localidade?.trim() || current.addressCity,
+          addressState: payload.uf?.trim().toUpperCase() || current.addressState,
+        }));
+      }
       setStatus(null);
+      setStatusTone("info");
+      return "valid";
     } catch {
+      setStatusTone("info");
       setStatus("Nao foi possivel consultar o CEP agora. Preencha o endereco manualmente.");
+      return "unavailable";
     } finally {
       setLoadingZipCode(false);
     }
+  };
+
+  const applyZipCode = async (rawZipCode: string) => {
+    await validateZipCode(rawZipCode, true);
   };
 
   const submit = async (event: React.FormEvent) => {
@@ -166,6 +170,9 @@ export default function PatientOnboardingPage() {
     try {
       setSaving(true);
       setStatus(null);
+      setStatusTone("info");
+      const zipCodeValidation = await validateZipCode(form.addressZipCode);
+      if (zipCodeValidation === "invalid") return;
       if (!session) throw new Error("Sessao nao encontrada.");
       const updatedUser = await apiRequest<User>("/auth/me/onboarding", {
         method: "PUT",
@@ -178,6 +185,7 @@ export default function PatientOnboardingPage() {
         method: "PUT",
         body: JSON.stringify({
           ...form,
+          cpf: digitsOnly(form.cpf),
           phone: digitsOnly(form.phone),
           addressZipCode: digitsOnly(form.addressZipCode),
           addressState: form.addressState.toUpperCase(),
@@ -188,6 +196,7 @@ export default function PatientOnboardingPage() {
       pushFlashToast("Perfil configurado com sucesso.");
       router.push("/patient/dashboard");
     } catch (err) {
+      setStatusTone("error");
       setStatus(err instanceof Error ? err.message : "Falha ao concluir cadastro.");
     } finally {
       setSaving(false);
@@ -251,6 +260,17 @@ export default function PatientOnboardingPage() {
             <section className="doctor-anamnesis-card">
               <h3>Dados pessoais</h3>
               <div className="patient-onboarding-grid">
+                <label>
+                  CPF
+                  <input
+                    value={form.cpf}
+                    onChange={(event) => setField("cpf", formatCpf(event.target.value))}
+                    placeholder="000.000.000-00"
+                    inputMode="numeric"
+                    maxLength={14}
+                    required
+                  />
+                </label>
                 <label>
                   Data de nascimento
                   <input
@@ -363,13 +383,18 @@ export default function PatientOnboardingPage() {
             </section>
 
             <div className="patient-onboarding-actions">
+              {status && (
+                <div className={`form-inline-alert ${statusTone === "error" ? "error" : "info"}`} role={statusTone === "error" ? "alert" : "status"}>
+                  <strong>{statusTone === "error" ? "Nao foi possivel concluir" : "Aviso sobre o CEP"}</strong>
+                  <span>{status}</span>
+                </div>
+              )}
               <button type="submit" disabled={saving} className="doctor-action-button doctor-action-button-primary">
                 {saving ? "Salvando..." : "Concluir cadastro"}
               </button>
             </div>
 
             {loadingZipCode && <p className="muted">Buscando endereco pelo CEP...</p>}
-            {status && <p className="muted">{status}</p>}
           </form>
         )}
       </section>

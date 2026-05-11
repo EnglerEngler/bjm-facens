@@ -21,6 +21,7 @@ describe("PrescriptionForm", () => {
     await userEvent.type(screen.getByLabelText(/frequência/i), "8/8h");
     await userEvent.type(screen.getByLabelText(/duração/i), "5 dias");
     await userEvent.click(screen.getByRole("button", { name: /salvar prescrição/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /confirmar e salvar/i }));
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });

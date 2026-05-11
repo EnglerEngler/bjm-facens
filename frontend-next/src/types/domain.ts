@@ -16,6 +16,7 @@ export interface User {
 export interface AuthSession {
   token: string;
   refreshToken: string;
+  rememberMe?: boolean;
   user: User;
 }
 
@@ -29,6 +30,7 @@ export interface Patient {
   userId: string;
   name?: string;
   clinicId?: string;
+  cpf?: string | null;
   birthDate?: string;
   biologicalSex?: "masculino" | "feminino" | null;
   phone?: string | null;
@@ -152,6 +154,7 @@ export interface AdminDashboardPerson {
 }
 
 export interface AdminDashboardPatient extends AdminDashboardPerson {
+  cpf: string | null;
   birthDate: string | null;
 }
 
@@ -169,6 +172,7 @@ export interface ClinicManagedUser {
   name: string;
   email: string;
   role: "doctor" | "patient";
+  cpf: string | null;
   birthDate: string | null;
 }
 

@@ -13,8 +13,10 @@ type DashboardClinic = {
   clinicName: string;
   joinCode: string;
   doctors: Array<{ id: string; userId: string; name: string; email: string; role: "doctor" }>;
-  patients: Array<{ id: string; userId: string; name: string; email: string; role: "patient"; birthDate: string | null }>;
+  patients: Array<{ id: string; userId: string; name: string; email: string; role: "patient"; cpf: string | null; birthDate: string | null }>;
 };
+
+const normalizeCpf = (value: unknown) => (typeof value === "string" ? value.replace(/\D/g, "") : value);
 
 const createClinicUserSchema = z
   .object({
@@ -22,6 +24,7 @@ const createClinicUserSchema = z
     email: z.string().trim().email(),
     password: z.string().min(6),
     role: z.enum(["doctor", "patient"]),
+    cpf: z.preprocess(normalizeCpf, z.string().regex(/^\d{11}$/).nullable()).optional(),
     birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   })
   .superRefine((payload, ctx) => {
@@ -32,6 +35,14 @@ const createClinicUserSchema = z
         message: "Nascimento e obrigatorio para paciente.",
       });
     }
+
+    if (payload.role === "patient" && !payload.cpf) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["cpf"],
+        message: "CPF e obrigatorio para paciente.",
+      });
+    }
   });
 
 const updateClinicUserSchema = z
@@ -39,6 +50,7 @@ const updateClinicUserSchema = z
     name: z.string().trim().min(3).optional(),
     email: z.string().trim().email().optional(),
     password: z.string().min(6).optional(),
+    cpf: z.preprocess(normalizeCpf, z.string().regex(/^\d{11}$/)).nullable().optional(),
     birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
     biologicalSex: z.enum(["masculino", "feminino"]).nullable().optional(),
     phone: z.preprocess((value) => (typeof value === "string" ? value.replace(/\D/g, "") : value), z.string().regex(/^\d{10,11}$/)).nullable().optional(),
@@ -92,6 +104,7 @@ const resolveScopedClinicId = (req: Request, requestedClinicId?: string) => {
 const isPatientOnboardingComplete = (patient: PatientModel) =>
   Boolean(
     patient.birthDate &&
+      patient.cpf &&
       patient.biologicalSex &&
       patient.phone &&
       patient.addressZipCode &&
@@ -104,27 +117,32 @@ const isPatientOnboardingComplete = (patient: PatientModel) =>
       patient.emergencyContactPhone,
   );
 
-const serializeManagedUser = (user: UserModel, doctor: DoctorModel | null, patient: PatientModel | null) => ({
-  id: patient?.id ?? doctor!.id,
-  userId: user.id,
-  name: user.name,
-  email: user.email,
-  role: user.role,
-  birthDate: serializeBirthDate(patient?.birthDate),
-  biologicalSex: patient?.biologicalSex ?? null,
-  phone: patient?.phone ?? null,
-  addressZipCode: patient?.addressZipCode ?? null,
-  addressStreet: patient?.addressStreet ?? null,
-  addressNumber: patient?.addressNumber ?? null,
-  addressComplement: patient?.addressComplement ?? null,
-  addressNeighborhood: patient?.addressNeighborhood ?? null,
-  addressCity: patient?.addressCity ?? null,
-  addressState: patient?.addressState ?? null,
-  emergencyContactName: patient?.emergencyContactName ?? null,
-  emergencyContactPhone: patient?.emergencyContactPhone ?? null,
-  onboardingCompleted: patient?.onboardingCompleted ?? null,
-  onboardingCompletedAt: patient?.onboardingCompletedAt?.toISOString() ?? null,
-});
+const serializeManagedUser = (user: UserModel, doctor: DoctorModel | null, patient: PatientModel | null) => {
+  const patientOnboardingCompleted = patient ? isPatientOnboardingComplete(patient) : null;
+
+  return {
+    id: patient?.id ?? doctor!.id,
+    userId: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    cpf: patient?.cpf ?? null,
+    birthDate: serializeBirthDate(patient?.birthDate),
+    biologicalSex: patient?.biologicalSex ?? null,
+    phone: patient?.phone ?? null,
+    addressZipCode: patient?.addressZipCode ?? null,
+    addressStreet: patient?.addressStreet ?? null,
+    addressNumber: patient?.addressNumber ?? null,
+    addressComplement: patient?.addressComplement ?? null,
+    addressNeighborhood: patient?.addressNeighborhood ?? null,
+    addressCity: patient?.addressCity ?? null,
+    addressState: patient?.addressState ?? null,
+    emergencyContactName: patient?.emergencyContactName ?? null,
+    emergencyContactPhone: patient?.emergencyContactPhone ?? null,
+    onboardingCompleted: patientOnboardingCompleted,
+    onboardingCompletedAt: patientOnboardingCompleted ? patient?.onboardingCompletedAt?.toISOString() ?? null : null,
+  };
+};
 
 adminRoutes.get("/dashboard", async (req, res, next) => {
   try {
@@ -203,6 +221,7 @@ adminRoutes.get("/dashboard", async (req, res, next) => {
         name: patientUser?.name ?? "Sem nome",
         email: patientUser?.email ?? "Sem email",
         role: "patient",
+        cpf: patient.cpf,
         birthDate: serializeBirthDate(patient.birthDate),
       });
     });
@@ -254,7 +273,7 @@ adminRoutes.post("/users", async (req, res, next) => {
           { transaction },
         );
 
-        return { id: doctor.id, userId: user.id, name: user.name, email: user.email, role: "doctor" as const, birthDate: null };
+        return { id: doctor.id, userId: user.id, name: user.name, email: user.email, role: "doctor" as const, cpf: null, birthDate: null };
       }
 
       const patient = await PatientModel.create(
@@ -262,6 +281,7 @@ adminRoutes.post("/users", async (req, res, next) => {
           id: createId("patient"),
           userId: user.id,
           clinicId,
+          cpf: payload.cpf ?? null,
           birthDate: payload.birthDate ? new Date(payload.birthDate) : null,
           createdAt: new Date(),
         },
@@ -274,6 +294,7 @@ adminRoutes.post("/users", async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: "patient" as const,
+        cpf: patient.cpf,
         birthDate: serializeBirthDate(patient.birthDate),
       };
     });
@@ -349,7 +370,8 @@ adminRoutes.patch("/users/:userId", async (req, res, next) => {
     }
     if (
       user.role === "doctor" &&
-      (payload.biologicalSex !== undefined ||
+      (payload.cpf !== undefined ||
+        payload.biologicalSex !== undefined ||
         payload.phone !== undefined ||
         payload.addressZipCode !== undefined ||
         payload.addressStreet !== undefined ||
@@ -371,6 +393,7 @@ adminRoutes.patch("/users/:userId", async (req, res, next) => {
       await user.save({ transaction });
 
       if (patient) {
+        if (payload.cpf !== undefined) patient.cpf = payload.cpf;
         if (payload.birthDate !== undefined) patient.birthDate = payload.birthDate ? new Date(payload.birthDate) : null;
         if (payload.biologicalSex !== undefined) patient.biologicalSex = payload.biologicalSex;
         if (payload.phone !== undefined) patient.phone = payload.phone;

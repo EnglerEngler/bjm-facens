@@ -30,7 +30,7 @@ describe("LoginForm", () => {
     await userEvent.click(screen.getByRole("button", { name: /entrar/i }));
 
     expect(await screen.findByText(/e-mail inválido/i)).toBeInTheDocument();
-    expect(screen.getByText(/senha deve ter ao menos 6 caracteres/i)).toBeInTheDocument();
+    expect(screen.getByText(/senha é obrigatória/i)).toBeInTheDocument();
   });
 
   it("valida email no login", async () => {
@@ -41,5 +41,19 @@ describe("LoginForm", () => {
     await userEvent.click(screen.getByRole("button", { name: /entrar/i }));
 
     expect(await screen.findByText(/e-mail inválido/i)).toBeInTheDocument();
+  });
+
+  it("mantém regra de senha mínima no cadastro", async () => {
+    render(<LoginForm />);
+
+    await userEvent.click(screen.getByRole("button", { name: /criar conta/i }));
+    await userEvent.type(screen.getByLabelText(/nome/i), "Maria");
+    await userEvent.type(screen.getByLabelText(/^e-mail/i), "maria@teste.com");
+    await userEvent.type(screen.getByLabelText(/^senha/i), "123");
+    await userEvent.selectOptions(screen.getByLabelText(/perfil/i), "clinic_admin");
+    await userEvent.type(screen.getByLabelText(/nome da clínica/i), "Clinica Teste");
+    await userEvent.click(screen.getByRole("button", { name: /cadastrar/i }));
+
+    expect(await screen.findByText(/senha deve ter ao menos 6 caracteres/i)).toBeInTheDocument();
   });
 });

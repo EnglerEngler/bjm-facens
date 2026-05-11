@@ -21,6 +21,8 @@ const updateRecordSchema = z.object({
   currentMedications: z.array(z.string().min(2)).optional(),
 });
 
+const normalizeCpf = (value: unknown) => (typeof value === "string" ? value.replace(/\D/g, "") : value);
+
 const createPatientSchema = z.object({
   userId: z.string().min(1),
   birthDate: z.string().min(8).optional(),
@@ -66,6 +68,7 @@ const optionalProfileText = z.preprocess(
 const digitsOnly = (value: unknown) => (typeof value === "string" ? value.replace(/\D/g, "") : value);
 
 const upsertPatientProfileSchema = z.object({
+  cpf: z.preprocess(normalizeCpf, z.string().regex(/^\d{11}$/)),
   birthDate: z.string().min(8),
   biologicalSex: z.enum(["masculino", "feminino"]),
   phone: z.preprocess(digitsOnly, z.string().regex(/^\d{10,11}$/)),
@@ -87,6 +90,7 @@ patientRoutes.use(authMiddleware);
 const isPatientOnboardingComplete = (patient: PatientModel) =>
   Boolean(
     patient.birthDate &&
+      patient.cpf &&
       patient.biologicalSex &&
       patient.phone &&
       patient.addressZipCode &&
@@ -162,11 +166,12 @@ patientRoutes.get("/me/prescriptions/:prescriptionId/pdf", requireRole("patient"
     if (!prescription) throw new HttpError("Prescricao nao encontrada.", 404);
 
     const patientUser = await UserModel.findByPk(patient.userId);
+    const prescriptionItems = prescription.get("items") as PrescriptionItemModel[] | undefined;
     const pdfBuffer = createSimplePdfBuffer({
       patientName: patientUser?.name?.trim() || "Paciente",
       createdAt: prescription.createdAt.toISOString(),
       conduct: prescription.conduct?.trim() || "Sem conduta registrada.",
-      items: prescription.items.map((item) => ({
+      items: (prescriptionItems ?? []).map((item) => ({
         medication: item.medication,
         dose: item.dose,
         frequency: item.frequency,
@@ -280,6 +285,13 @@ patientRoutes.get("/me/profile", requireRole("patient"), async (req, res, next) 
     });
     if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
 
+    const onboardingCompleted = isPatientOnboardingComplete(patient);
+    if (patient.onboardingCompleted !== onboardingCompleted) {
+      patient.onboardingCompleted = onboardingCompleted;
+      patient.onboardingCompletedAt = onboardingCompleted ? patient.onboardingCompletedAt ?? new Date() : null;
+      await patient.save();
+    }
+
     addAuditLog({
       actorUserId: req.auth!.userId,
       action: "patient.profile.read",
@@ -303,6 +315,7 @@ patientRoutes.put("/me/profile", requireRole("patient"), async (req, res, next) 
     if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
 
     patient.birthDate = new Date(payload.birthDate);
+    patient.cpf = payload.cpf;
     patient.biologicalSex = payload.biologicalSex;
     patient.phone = payload.phone;
     patient.addressZipCode = payload.addressZipCode;
@@ -340,14 +353,19 @@ patientRoutes.get("/", requireRole("doctor", "admin", "clinic_admin"), async (re
     }
     const where = req.auth?.role === "admin" ? {} : { clinicId: req.auth?.clinicId };
     const patients = await PatientModel.findAll({ where });
-    const records = await MedicalRecordModel.findAll();
-    const users = await UserModel.findAll();
+    const patientIds = patients.map((patient) => patient.id);
+    const userIds = patients.map((patient) => patient.userId);
+    const [records, users] = await Promise.all([
+      patientIds.length > 0 ? MedicalRecordModel.findAll({ where: { patientId: patientIds } }) : Promise.resolve([]),
+      userIds.length > 0 ? UserModel.findAll({ where: { id: userIds } }) : Promise.resolve([]),
+    ]);
     const userNameById = new Map(users.map((user) => [user.id, user.name]));
+    const recordByPatientId = new Map(records.map((record) => [record.patientId, record]));
 
     const items = patients.map((patient) => ({
       ...patient.toJSON(),
       name: userNameById.get(patient.userId) ?? "",
-      record: records.find((mr) => mr.patientId === patient.id)?.toJSON() ?? null,
+      record: recordByPatientId.get(patient.id)?.toJSON() ?? null,
     }));
     res.json(items);
   } catch (error) {

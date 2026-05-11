@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "@/lib/api-client";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
+import { digitsOnly, formatCep, formatCpf, formatPhone, matchesSearch } from "@/lib/patient-fields";
 import type { AdminDashboardClinic, AdminManagedUserDetail, ClinicManagedUser } from "@/types/domain";
 
 type ManagedAdminUser = ClinicManagedUser & {
@@ -16,6 +17,7 @@ type ManagedAdminUser = ClinicManagedUser & {
 type AdminEntityFilter = "clinics" | "doctors" | "patients" | null;
 
 type PatientProfileFormState = {
+  cpf: string;
   birthDate: string;
   biologicalSex: "masculino" | "feminino" | "";
   phone: string;
@@ -46,26 +48,11 @@ interface ViaCepResponse {
   erro?: boolean;
 }
 
-const digitsOnly = (value: string) => value.replace(/\D/g, "");
-
-const formatPhone = (value: string) => {
-  const digits = digitsOnly(value).slice(0, 11);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-};
-
-const formatCep = (value: string) => {
-  const digits = digitsOnly(value).slice(0, 8);
-  if (digits.length <= 5) return digits;
-  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
-};
-
 const emptyEditForm: AdminEditFormState = {
   name: "",
   email: "",
   password: "",
+  cpf: "",
   birthDate: "",
   biologicalSex: "",
   phone: "",
@@ -84,6 +71,7 @@ const toEditFormState = (user: AdminManagedUserDetail): AdminEditFormState => ({
   name: user.name,
   email: user.email,
   password: "",
+  cpf: user.cpf ? formatCpf(user.cpf) : "",
   birthDate: user.birthDate ?? "",
   biologicalSex: user.biologicalSex ?? "",
   phone: user.phone ? formatPhone(user.phone) : "",
@@ -143,6 +131,7 @@ export default function AdminDashboardPage() {
       clinics.flatMap((clinic) => [
         ...clinic.doctors.map((doctor) => ({
           ...doctor,
+          cpf: null,
           birthDate: null,
           clinicId: clinic.clinicId,
           clinicName: clinic.clinicName,
@@ -168,12 +157,21 @@ export default function AdminDashboardPage() {
             return true;
           });
 
-    const text = query.trim().toLowerCase();
-    if (!text) return scopedUsers;
+    if (!query.trim()) return scopedUsers;
 
     return scopedUsers.filter((user) =>
-      [user.name, user.email, user.userId, user.id, user.birthDate ?? "", user.role, user.clinicName, user.joinCode, user.clinicId].some(
-        (value) => value.toLowerCase().includes(text),
+      matchesSearch(
+        query,
+        user.name,
+        user.email,
+        user.userId,
+        user.id,
+        user.cpf ?? "",
+        user.birthDate ?? "",
+        user.role,
+        user.clinicName,
+        user.joinCode,
+        user.clinicId,
       ),
     );
   }, [activeFilter, users, query]);
@@ -217,22 +215,17 @@ export default function AdminDashboardPage() {
   }, [selectedUserSummary]);
 
   const filteredClinics = useMemo(() => {
-    const text = query.trim().toLowerCase();
-    const matchedClinics = !text
+    const matchedClinics = !query.trim()
       ? clinics
       : clinics
           .map((clinic) => {
             const doctors = clinic.doctors.filter((doctor) =>
-              [doctor.name, doctor.email, doctor.userId, doctor.id].some((value) => value.toLowerCase().includes(text)),
+              matchesSearch(query, doctor.name, doctor.email, doctor.userId, doctor.id),
             );
             const patients = clinic.patients.filter((patient) =>
-              [patient.name, patient.email, patient.userId, patient.id, patient.birthDate ?? ""].some((value) =>
-                value.toLowerCase().includes(text),
-              ),
+              matchesSearch(query, patient.name, patient.email, patient.userId, patient.id, patient.cpf ?? "", patient.birthDate ?? ""),
             );
-            const clinicMatch = [clinic.clinicName, clinic.joinCode, clinic.clinicId].some((value) =>
-              value.toLowerCase().includes(text),
-            );
+            const clinicMatch = matchesSearch(query, clinic.clinicName, clinic.joinCode, clinic.clinicId);
 
             if (clinicMatch) return clinic;
             if (doctors.length || patients.length) return { ...clinic, doctors, patients };
@@ -289,6 +282,7 @@ export default function AdminDashboardPage() {
             name: nextUser.name,
             email: nextUser.email,
             role: "patient",
+            cpf: nextUser.cpf,
             birthDate: nextUser.birthDate,
           });
         }
@@ -347,6 +341,7 @@ export default function AdminDashboardPage() {
           name: editForm.name,
           email: editForm.email,
           password: editForm.password || undefined,
+          cpf: selectedUser.role === "patient" ? digitsOnly(editForm.cpf) || null : undefined,
           birthDate: selectedUser.role === "patient" ? editForm.birthDate || null : undefined,
           biologicalSex: selectedUser.role === "patient" ? editForm.biologicalSex || null : undefined,
           phone: selectedUser.role === "patient" ? digitsOnly(editForm.phone) || null : undefined,
@@ -413,7 +408,7 @@ export default function AdminDashboardPage() {
         <div className="doctor-search-heading">
           <div>
             <h2>Rede assistencial</h2>
-            <p className="muted">Pesquise por clinica, codigo de entrada, nome, e-mail, perfil, usuario ou data de nascimento.</p>
+            <p className="muted">Pesquise por clinica, codigo de entrada, nome, e-mail, perfil, CPF, usuario ou data de nascimento.</p>
           </div>
           <span className="doctor-result-chip">{resultCount} resultado(s)</span>
         </div>
@@ -455,7 +450,7 @@ export default function AdminDashboardPage() {
           id="admin-search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Ex.: Clinica Central, maria@, patient_, 1990-08-16"
+          placeholder="Ex.: Clinica Central, 123.456.789-00, maria@, patient_, 1990-08-16"
           className="doctor-search-input"
         />
 
@@ -502,7 +497,7 @@ export default function AdminDashboardPage() {
                   </span>
                   <span className="muted">{user.email}</span>
                   <span className="doctor-patient-card-meta">
-                    {user.role === "doctor" ? "Perfil medico" : "Perfil paciente"} · {user.clinicName}
+                    {user.role === "doctor" ? "Perfil medico" : `Perfil paciente · CPF ${user.cpf ? formatCpf(user.cpf) : "pendente"}`} · {user.clinicName}
                   </span>
                 </button>
               );
@@ -669,6 +664,17 @@ export default function AdminDashboardPage() {
                       <section className="doctor-anamnesis-card">
                         <h3>Dados pessoais</h3>
                         <div className="patient-onboarding-grid">
+                          <label>
+                            CPF
+                            <input
+                              value={editForm.cpf}
+                              onChange={(event) => setProfileField("cpf", formatCpf(event.target.value))}
+                              placeholder="000.000.000-00"
+                              inputMode="numeric"
+                              maxLength={14}
+                              required
+                            />
+                          </label>
                           <label>
                             Data de nascimento
                             <input type="date" value={editForm.birthDate} onChange={(event) => setProfileField("birthDate", event.target.value)} required />

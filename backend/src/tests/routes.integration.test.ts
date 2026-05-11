@@ -272,6 +272,7 @@ test("routes: patients and records", async () => {
         "content-type": "application/json",
       },
       body: JSON.stringify({
+        cpf: "12345678901",
         birthDate: "1993-09-12",
         biologicalSex: "masculino",
         phone: "11999999999",
@@ -474,12 +475,14 @@ test("routes: clinic admin can create and edit clinic users", async () => {
         email: `patient_manage_${uniq}@bjm.local`,
         password: "123456",
         role: "patient",
+        cpf: "98765432100",
         birthDate: "1990-08-16",
       }),
     });
     assert.equal(createPatient.status, 201);
-    const patientBody = (await createPatient.json()) as { userId: string; role: string; birthDate: string | null };
+    const patientBody = (await createPatient.json()) as { userId: string; role: string; cpf: string | null; birthDate: string | null };
     assert.equal(patientBody.role, "patient");
+    assert.equal(patientBody.cpf, "98765432100");
     assert.equal(patientBody.birthDate, "1990-08-16");
 
     const updatePatient = await fetch(`${api.baseUrl}/admin/users/${patientBody.userId}`, {
@@ -491,13 +494,15 @@ test("routes: clinic admin can create and edit clinic users", async () => {
       body: JSON.stringify({
         name: "Paciente Editado",
         email: `patient_manage_edit_${uniq}@bjm.local`,
+        cpf: "11122233344",
         birthDate: "1991-01-20",
       }),
     });
     assert.equal(updatePatient.status, 200);
-    const updatedPatient = (await updatePatient.json()) as { name: string; email: string; birthDate: string | null };
+    const updatedPatient = (await updatePatient.json()) as { name: string; email: string; cpf: string | null; birthDate: string | null };
     assert.equal(updatedPatient.name, "Paciente Editado");
     assert.equal(updatedPatient.email, `patient_manage_edit_${uniq}@bjm.local`);
+    assert.equal(updatedPatient.cpf, "11122233344");
     assert.equal(updatedPatient.birthDate, "1991-01-20");
 
     const dashboard = await fetch(`${api.baseUrl}/admin/dashboard`, {
@@ -506,7 +511,7 @@ test("routes: clinic admin can create and edit clinic users", async () => {
     assert.equal(dashboard.status, 200);
     const dashboardBody = (await dashboard.json()) as Array<{
       doctors: Array<{ userId: string }>;
-      patients: Array<{ userId: string; name: string; birthDate: string | null }>;
+      patients: Array<{ userId: string; name: string; cpf: string | null; birthDate: string | null }>;
       joinCode: string;
     }>;
     assert.equal(dashboardBody.length, 1);
@@ -514,7 +519,11 @@ test("routes: clinic admin can create and edit clinic users", async () => {
     assert.ok(dashboardBody[0].doctors.some((item) => item.userId === doctorBody.userId));
     assert.ok(
       dashboardBody[0].patients.some(
-        (item) => item.userId === patientBody.userId && item.name === "Paciente Editado" && item.birthDate === "1991-01-20",
+        (item) =>
+          item.userId === patientBody.userId &&
+          item.name === "Paciente Editado" &&
+          item.cpf === "11122233344" &&
+          item.birthDate === "1991-01-20",
       ),
     );
   } finally {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { commonMedicationNames } from "@/lib/medications";
 import type { AssistedPrescriptionDraft, PrescriptionItem } from "@/types/domain";
 
 const itemSchema = z.object({
@@ -38,6 +39,7 @@ export function PrescriptionForm({ defaultPatientId, aiDraft, aiDraftLoading, ai
   const [patientId, setPatientId] = useState(defaultPatientId ?? "");
   const [conduct, setConduct] = useState("");
   const [items, setItems] = useState<PrescriptionItem[]>([{ ...emptyItem }]);
+  const [pendingSubmission, setPendingSubmission] = useState<{ patientId: string; conduct?: string; items: PrescriptionItem[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -66,6 +68,27 @@ export function PrescriptionForm({ defaultPatientId, aiDraft, aiDraftLoading, ai
     setItems((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)));
   };
 
+  const medicationSuggestions = Array.from(
+    new Set([
+      ...commonMedicationNames,
+      ...items.map((item) => item.medication.trim()).filter(Boolean),
+      ...(aiDraft?.items.map((item) => item.medication.trim()).filter(Boolean) ?? []),
+    ]),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const persistPrescription = async (payload: { patientId: string; conduct?: string; items: PrescriptionItem[] }) => {
+    try {
+      setLoading(true);
+      await onSubmit(payload);
+      setSuccess("Prescrição enviada com sucesso.");
+      setPendingSubmission(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha ao enviar prescrição.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -76,16 +99,7 @@ export function PrescriptionForm({ defaultPatientId, aiDraft, aiDraftLoading, ai
       setError(parsed.error.issues[0]?.message ?? "Dados inválidos.");
       return;
     }
-
-    try {
-      setLoading(true);
-      await onSubmit(parsed.data);
-      setSuccess("Prescrição enviada com sucesso.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao enviar prescrição.");
-    } finally {
-      setLoading(false);
-    }
+    setPendingSubmission(parsed.data);
   };
 
   return (
@@ -130,7 +144,13 @@ export function PrescriptionForm({ defaultPatientId, aiDraft, aiDraftLoading, ai
                   value={item.medication}
                   onChange={(e) => updateItem(index, "medication", e.target.value)}
                   placeholder="Ex: Dipirona"
+                  list={`medication-suggestions-${index}`}
                 />
+                <datalist id={`medication-suggestions-${index}`}>
+                  {medicationSuggestions.map((medication) => (
+                    <option key={`${index}-${medication}`} value={medication} />
+                  ))}
+                </datalist>
               </label>
               <label>
                 Dose
@@ -172,6 +192,28 @@ export function PrescriptionForm({ defaultPatientId, aiDraft, aiDraftLoading, ai
 
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
+
+      {pendingSubmission && (
+        <div className="confirm-save-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-save-title">
+          <div className="confirm-save-card">
+            <h4 id="confirm-save-title">Confirmar antes de salvar</h4>
+            <p className="muted">Revise a prescricao. Depois de salvar, a analise clinica sera executada.</p>
+            <ul className="confirm-save-list">
+              <li>Paciente: {pendingSubmission.patientId}</li>
+              <li>Itens: {pendingSubmission.items.length}</li>
+              <li>Primeiro medicamento: {pendingSubmission.items[0]?.medication || "Nao informado"}</li>
+            </ul>
+            <div className="row">
+              <button type="button" onClick={() => setPendingSubmission(null)} disabled={loading}>
+                Revisar
+              </button>
+              <button type="button" onClick={() => void persistPrescription(pendingSubmission)} disabled={loading}>
+                {loading ? "Salvando..." : "Confirmar e salvar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

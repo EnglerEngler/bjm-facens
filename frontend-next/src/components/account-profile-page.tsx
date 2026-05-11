@@ -49,7 +49,7 @@ export function AccountProfilePage({ role, title, description }: AccountProfileP
     };
 
     void run();
-  }, [session?.user?.id]);
+  }, [session?.user]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();

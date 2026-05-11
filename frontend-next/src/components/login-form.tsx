@@ -10,11 +10,12 @@ import type { Patient, User, UserRole } from "@/types/domain";
 
 const loginSchema = z.object({
   email: z.string().email("E-mail inválido."),
-  password: z.string().min(6, "Senha deve ter ao menos 6 caracteres."),
+  password: z.string().min(1, "Senha é obrigatória."),
 });
 
 const registerSchema = loginSchema.extend({
   name: z.string().min(3, "Nome deve ter ao menos 3 caracteres."),
+  password: z.string().min(6, "Senha deve ter ao menos 6 caracteres."),
   role: z.enum(["doctor", "patient", "admin", "clinic_admin"]),
   clinicName: z.string().optional(),
   clinicJoinCode: z.string().optional(),
@@ -69,6 +70,7 @@ export function LoginForm() {
   const [role, setRole] = useState<UserRole>("patient");
   const [clinicName, setClinicName] = useState("");
   const [clinicJoinCode, setClinicJoinCode] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,12 +89,12 @@ export function LoginForm() {
       setLoading(true);
       if (mode === "login") {
         const parsed = loginSchema.parse({ email, password });
-        const session = await login(parsed.email, parsed.password);
+        const session = await login(parsed.email, parsed.password, rememberMe);
         router.push(await resolvePostLoginPath(session.user));
       } else {
         const parsed = registerSchema.parse({ name, email, password, role, clinicName, clinicJoinCode });
         await register(parsed);
-        const session = await login(parsed.email, parsed.password);
+        const session = await login(parsed.email, parsed.password, true);
         router.push(await resolvePostLoginPath(session.user));
       }
     } catch (err) {
@@ -125,6 +127,13 @@ export function LoginForm() {
           <span>Senha</span>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
+
+        {mode === "login" && (
+          <label className="login-checkbox">
+            <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} />
+            <span>Lembrar-me neste dispositivo</span>
+          </label>
+        )}
 
         {mode === "register" && (
           <label className="login-field">

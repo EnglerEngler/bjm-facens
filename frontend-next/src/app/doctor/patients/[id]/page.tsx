@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { anamnesisBlocks, shouldDisplayQuestion } from "@/lib/anamnesis-questionnaire";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
+import { formatCpf } from "@/lib/patient-fields";
 import type { MedicalRecord, MedicalRecordHistoryEntry, Patient, PatientAnamnesis, Prescription } from "@/types/domain";
 
 interface PatientRecordPayload {
@@ -36,6 +37,12 @@ const formatDateTime = (value?: string | null) => {
 
 const joinValues = (values: string[]) => (values.length ? values.join(", ") : "Nenhum registro");
 
+const getSortableTime = (value?: string | null) => {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
 export default function DoctorPatientRecordPage() {
   useAuthRedirect();
 
@@ -49,6 +56,8 @@ export default function DoctorPatientRecordPage() {
   const [anamnesisError, setAnamnesisError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [prescriptionSortOrder, setPrescriptionSortOrder] = useState<"desc" | "asc">("desc");
+  const [historySortOrder, setHistorySortOrder] = useState<"desc" | "asc">("desc");
 
   useEffect(() => {
     const run = async () => {
@@ -110,6 +119,30 @@ export default function DoctorPatientRecordPage() {
 
   const answeredCount = Object.values(anamnesisPayload?.anamnesis.answers ?? {}).filter((value) => value.trim()).length;
   const patientDisplayName = payload?.patient.name?.trim() || anamnesisPayload?.patient.name?.trim() || patientId;
+  const sortedPrescriptions = useMemo(
+    () =>
+      [...prescriptions].sort((a, b) => {
+        const diff =
+          prescriptionSortOrder === "desc"
+            ? getSortableTime(b.createdAt) - getSortableTime(a.createdAt)
+            : getSortableTime(a.createdAt) - getSortableTime(b.createdAt);
+
+        return diff !== 0 ? diff : a.id.localeCompare(b.id);
+      }),
+    [prescriptions, prescriptionSortOrder],
+  );
+  const sortedHistory = useMemo(
+    () =>
+      [...history].sort((a, b) => {
+        const diff =
+          historySortOrder === "desc"
+            ? getSortableTime(b.createdAt) - getSortableTime(a.createdAt)
+            : getSortableTime(a.createdAt) - getSortableTime(b.createdAt);
+
+        return diff !== 0 ? diff : a.id.localeCompare(b.id);
+      }),
+    [history, historySortOrder],
+  );
   const hasStructuredRecord =
     Boolean(payload?.record.lastUpdatedAt) ||
     Boolean(payload?.record.allergies.length) ||
@@ -157,7 +190,10 @@ export default function DoctorPatientRecordPage() {
               <article className="doctor-fact-card">
                 <span className="doctor-fact-label">Nascimento</span>
                 <strong>{formatDate(payload.patient.birthDate)}</strong>
-                <small>Clinica {payload.patient.clinicId ?? "Nao informada"}</small>
+                <small>
+                  Clinica {payload.patient.clinicId ?? "Nao informada"}
+                  {payload.patient.cpf ? ` · CPF ${formatCpf(payload.patient.cpf)}` : ""}
+                </small>
               </article>
               <article className="doctor-fact-card">
                 <span className="doctor-fact-label">Status do prontuario</span>
@@ -236,13 +272,25 @@ export default function DoctorPatientRecordPage() {
                 <h2>Historico de prescricoes</h2>
                 <p className="muted">Consulte as prescricoes ja emitidas para este paciente antes de criar uma nova.</p>
               </div>
+              <div className="doctor-record-header-actions">
+                <span className="doctor-result-chip">
+                  Ordem atual: {prescriptionSortOrder === "desc" ? "mais recente primeiro" : "mais antiga primeiro"}
+                </span>
+                <button
+                  type="button"
+                  className="doctor-action-button doctor-action-button-secondary"
+                  onClick={() => setPrescriptionSortOrder((current) => (current === "desc" ? "asc" : "desc"))}
+                >
+                  Inverter ordem
+                </button>
+              </div>
             </div>
 
-            {prescriptions.length === 0 ? (
+            {sortedPrescriptions.length === 0 ? (
               <p className="muted">Nenhuma prescricao registrada para este paciente.</p>
             ) : (
               <div className="doctor-history-list">
-                {prescriptions.map((prescription) => (
+                {sortedPrescriptions.map((prescription) => (
                   <article key={prescription.id} className="doctor-history-item">
                     <strong>{formatDateTime(prescription.createdAt)}</strong>
                     {prescription.conduct && <p>{prescription.conduct}</p>}
@@ -264,13 +312,25 @@ export default function DoctorPatientRecordPage() {
                 <h2>Alteracoes do prontuario</h2>
                 <p className="muted">Ultimos registros de modificacao para auditoria e acompanhamento.</p>
               </div>
+              <div className="doctor-record-header-actions">
+                <span className="doctor-result-chip">
+                  Ordem atual: {historySortOrder === "desc" ? "mais recente primeiro" : "mais antiga primeiro"}
+                </span>
+                <button
+                  type="button"
+                  className="doctor-action-button doctor-action-button-secondary"
+                  onClick={() => setHistorySortOrder((current) => (current === "desc" ? "asc" : "desc"))}
+                >
+                  Inverter ordem
+                </button>
+              </div>
             </div>
 
-            {history.length === 0 ? (
+            {sortedHistory.length === 0 ? (
               <p className="muted">Sem alteracoes registradas. Se ainda nao houver prontuario estruturado, revise a anamnese e siga para a prescricao.</p>
             ) : (
               <div className="doctor-history-list">
-                {history.map((entry) => (
+                {sortedHistory.map((entry) => (
                   <article key={entry.id} className="doctor-history-item">
                     <strong>{formatDateTime(entry.createdAt)}</strong>
                     <p className="muted">Alterado por {entry.changedByUserId}</p>
