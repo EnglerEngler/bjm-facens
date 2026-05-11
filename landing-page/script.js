@@ -1,5 +1,5 @@
 const APP_URL = "https://COLOCAR-LINK-DA-APLICACAO-VERCEL-AQUI";
-const FORM_URL = "https://COLOCAR-LINK-DO-GOOGLE-FORMS-AQUI";
+const FORM_URL = "https://forms.gle/TurChnHe3JHtMyYw6";
 
 const setLinkTargets = () => {
   document.querySelectorAll("[data-app-link]").forEach((link) => {
