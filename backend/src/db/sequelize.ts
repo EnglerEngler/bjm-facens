@@ -1,3 +1,4 @@
+import mysql2 from "mysql2";
 import { Sequelize, type Options } from "sequelize";
 import { env } from "../config/env.js";
 
@@ -11,6 +12,7 @@ const sequelizeOptions: Options = {
   host: env.dbHost,
   port: env.dbPort,
   dialect: "mysql",
+  dialectModule: mysql2,
   logging: env.dbLogging ? console.log : false,
   pool: {
     max: env.nodeEnv === "production" ? 2 : 5,
