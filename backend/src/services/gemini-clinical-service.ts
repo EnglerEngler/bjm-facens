@@ -238,6 +238,11 @@ export const generateAssessmentSummary = async (
 
 export const generatePrescriptionDraft = async (patientId: string): Promise<SuggestedPrescriptionDraft> => {
   const context = await loadClinicalContext(patientId);
+  const hasAnamnesisAnswers = Object.values(context.anamnesis?.answers ?? {}).some((value) => value.trim());
+
+  if (!context.anamnesis || !hasAnamnesisAnswers) {
+    throw new HttpError("Paciente ainda nao possui anamnese preenchida. Preencha a anamnese para gerar sugestao com IA.", 422);
+  }
 
   const prompt = [
     "Voce vai sugerir um rascunho inicial de prescricao para um medico.",

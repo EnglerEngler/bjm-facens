@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { commonMedicationNames } from "@/lib/medications";
@@ -114,7 +115,17 @@ export function PrescriptionForm({ defaultPatientId, aiDraft, aiDraftLoading, ai
         </section>
       )}
 
-      {aiDraftError && <p className="error">{aiDraftError}</p>}
+      {aiDraftError && (
+        <section className={`form-inline-alert ${aiDraft ? "info" : "error"}`}>
+          <strong>Rascunho assistido indisponivel</strong>
+          <span>{aiDraftError}</span>
+          {!aiDraft && defaultPatientId && aiDraftError.toLowerCase().includes("anamnese") && (
+            <Link href={`/doctor/patients/${defaultPatientId}/anamnesis`} className="doctor-inline-link">
+              Abrir anamnese do paciente
+            </Link>
+          )}
+        </section>
+      )}
 
       {!defaultPatientId && (
         <label>

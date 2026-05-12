@@ -434,6 +434,23 @@ test("routes: role authorization denies patient on doctor-only routes", async ()
   }
 });
 
+test("routes: ai prescription draft requires filled anamnesis", async () => {
+  const api = await startServer();
+  try {
+    const ctx = await bootstrapClinic(api.baseUrl, Date.now());
+
+    const draft = await fetch(`${api.baseUrl}/ai/prescription-draft/${ctx.patientProfileId}`, {
+      headers: { Authorization: `Bearer ${ctx.doctorSession.token}` },
+    });
+
+    assert.equal(draft.status, 422);
+    const body = await draft.json();
+    assert.equal(body.message, "Paciente ainda nao possui anamnese preenchida. Preencha a anamnese para gerar sugestao com IA.");
+  } finally {
+    await api.close();
+  }
+});
+
 test("routes: clinic admin can create and edit clinic users", async () => {
   const api = await startServer();
   try {

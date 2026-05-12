@@ -2,6 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PrescriptionForm } from "@/components/prescription-form";
@@ -17,6 +18,7 @@ export default function NewPrescriptionPage() {
   const [aiDraft, setAiDraft] = useState<AssistedPrescriptionDraft | null>(null);
   const [aiDraftLoading, setAiDraftLoading] = useState(false);
   const [aiDraftError, setAiDraftError] = useState<string | null>(null);
+  const [anamnesisPending, setAnamnesisPending] = useState(false);
 
   useEffect(() => {
     const patientId = new URLSearchParams(window.location.search).get("patientId") ?? undefined;
@@ -28,6 +30,7 @@ export default function NewPrescriptionPage() {
       setAiDraft(null);
       setAiDraftError(null);
       setAiDraftLoading(false);
+      setAnamnesisPending(false);
       return;
     }
 
@@ -35,12 +38,16 @@ export default function NewPrescriptionPage() {
       try {
         setAiDraftLoading(true);
         setAiDraftError(null);
+        setAnamnesisPending(false);
         const draft = await apiRequest<AssistedPrescriptionDraft>(`/ai/prescription-draft/${defaultPatientId}`);
         setAiDraft(draft);
       } catch (err) {
         setAiDraft(null);
         if (err instanceof ApiError && err.status === 404) {
           setAiDraftError("Paciente nao encontrado para gerar o rascunho assistido.");
+        } else if (err instanceof ApiError && err.status === 422 && err.message.toLowerCase().includes("anamnese")) {
+          setAnamnesisPending(true);
+          setAiDraftError("A sugestao por IA ainda nao esta disponivel porque o paciente nao preencheu a anamnese.");
         } else {
           setAiDraftError(err instanceof Error ? err.message : "Falha ao gerar sugestao inicial com IA.");
         }
@@ -70,6 +77,22 @@ export default function NewPrescriptionPage() {
     <main>
       <h1>Nova Prescrição</h1>
       <p className="muted">Revise a sugestao inicial da IA e ajuste medicamento, dose, frequencia, duracao e via antes de salvar.</p>
+      {anamnesisPending && defaultPatientId && (
+        <section className="doctor-empty-state doctor-empty-state-warning">
+          <div>
+            <strong>Anamnese pendente</strong>
+            <p>A IA precisa da anamnese preenchida para montar um rascunho seguro. A prescricao manual continua liberada.</p>
+          </div>
+          <div className="doctor-empty-state-actions">
+            <Link href={`/doctor/patients/${defaultPatientId}`} className="doctor-action-button doctor-action-button-secondary">
+              Ver ficha do paciente
+            </Link>
+            <Link href={`/doctor/patients/${defaultPatientId}/anamnesis`} className="doctor-action-button doctor-action-button-primary">
+              Ver status da anamnese
+            </Link>
+          </div>
+        </section>
+      )}
       <PrescriptionForm
         defaultPatientId={defaultPatientId}
         aiDraft={aiDraft}

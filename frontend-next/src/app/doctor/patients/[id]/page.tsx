@@ -225,12 +225,29 @@ export default function DoctorPatientRecordPage() {
                 <h2>Resumo clinico preenchido pelo paciente</h2>
                 <p className="muted">As respostas aparecem agrupadas e prontas para consulta rapida.</p>
               </div>
-              <Link href={`/doctor/patients/${patientId}/anamnesis`} className="doctor-action-button doctor-action-button-primary">
-                Ver anamnese completa
-              </Link>
+              {anamnesisPayload && (
+                <Link href={`/doctor/patients/${patientId}/anamnesis`} className="doctor-action-button doctor-action-button-primary">
+                  Ver anamnese completa
+                </Link>
+              )}
             </div>
 
-            {anamnesisError && <p className="muted">{anamnesisError}</p>}
+            {anamnesisError && (
+              <section className="doctor-empty-state doctor-empty-state-warning">
+                <div>
+                  <strong>Anamnese ainda nao preenchida</strong>
+                  <p>Sem anamnese, a IA nao consegue gerar o rascunho inicial. A equipe pode seguir com prescricao manual enquanto aguarda o preenchimento.</p>
+                </div>
+                <div className="doctor-empty-state-actions">
+                  <Link href={`/doctor/prescriptions/new?patientId=${patientId}`} className="doctor-action-button doctor-action-button-primary">
+                    Criar prescricao manual
+                  </Link>
+                  <Link href={`/doctor/patients/${patientId}/anamnesis`} className="doctor-action-button doctor-action-button-secondary">
+                    Ver tela da anamnese
+                  </Link>
+                </div>
+              </section>
+            )}
 
             {anamnesisPayload && (
               <>
