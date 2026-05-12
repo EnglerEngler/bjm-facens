@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { COOKIE_ROLE_KEY, COOKIE_TOKEN_KEY } from "@/lib/constants";
+import { COOKIE_ROLE_KEY, COOKIE_TOKEN_KEY } from "@/lib/auth-constants";
 
 const publicRoutes = ["/login", "/como-funciona", "/unauthorized"];
 

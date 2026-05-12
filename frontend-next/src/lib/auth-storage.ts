@@ -1,4 +1,4 @@
-import { COOKIE_ROLE_KEY, COOKIE_TOKEN_KEY } from "@/lib/constants";
+import { COOKIE_ROLE_KEY, COOKIE_TOKEN_KEY } from "@/lib/auth-constants";
 import type { AuthSession } from "@/types/domain";
 
 const SESSION_KEY = "bjm_session";

@@ -3,6 +3,3 @@ const fallbackApiBaseUrl = process.env.NODE_ENV === "development" ? "http://loca
 
 export const API_BASE_URL = configuredApiBaseUrl || fallbackApiBaseUrl;
 export const DEFAULT_PATIENT_ID = process.env.NEXT_PUBLIC_DEFAULT_PATIENT_ID ?? "";
-
-export const COOKIE_TOKEN_KEY = "bjm_token";
-export const COOKIE_ROLE_KEY = "bjm_role";
