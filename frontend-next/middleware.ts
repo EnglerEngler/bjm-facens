@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { COOKIE_ROLE_KEY, COOKIE_TOKEN_KEY } from "@/lib/auth-constants";
 
+const COOKIE_TOKEN_KEY = "bjm_token";
+const COOKIE_ROLE_KEY = "bjm_role";
 const publicRoutes = ["/login", "/como-funciona", "/unauthorized"];
 
 const hasRoleAccess = (pathname: string, role: string) => {
