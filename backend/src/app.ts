@@ -21,6 +21,15 @@ const allowedOrigins = new Set(
     .filter(Boolean),
 );
 
+const isAllowedVercelOrigin = (origin: string) => {
+  try {
+    const { protocol, hostname } = new URL(origin);
+    return protocol === "https:" && hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+};
+
 if (env.nodeEnv !== "production") {
   allowedOrigins.add("http://localhost:3002");
   allowedOrigins.add("http://127.0.0.1:3002");
@@ -29,7 +38,7 @@ if (env.nodeEnv !== "production") {
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.has(origin)) {
+      if (!origin || allowedOrigins.has(origin) || isAllowedVercelOrigin(origin)) {
         return callback(null, true);
       }
 
