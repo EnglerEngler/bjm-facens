@@ -11,6 +11,15 @@ const base = {
   timezone: "+00:00",
 };
 
+if (process.env.DB_SSL === "true") {
+  base.dialectOptions = {
+    ssl: {
+      require: true,
+      rejectUnauthorized: true,
+    },
+  };
+}
+
 module.exports = {
   development: base,
   test: {

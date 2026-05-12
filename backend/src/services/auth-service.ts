@@ -253,8 +253,11 @@ export const requestPasswordReset = async (email: string) => {
     expiresAt: new Date(Date.now() + 30 * 60 * 1000),
   });
 
-  // Em produção este token deve ser enviado por e-mail.
-  return { accepted: true, resetTokenPreview: token };
+  if (env.exposeResetTokenPreview) {
+    return { accepted: true, resetTokenPreview: token };
+  }
+
+  return { accepted: true };
 };
 
 export const resetPassword = async (payload: { token: string; newPassword: string }) => {

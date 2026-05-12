@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import zlib from "node:zlib";
 
 interface PrescriptionPdfItem {
@@ -40,6 +41,18 @@ interface EmbeddedPngImage {
 }
 
 let cachedLogo: EmbeddedPngImage | null = null;
+
+const resolveLogoPath = () => {
+  const currentFilePath = fileURLToPath(import.meta.url);
+  const candidates = [
+    path.resolve(process.cwd(), "public/logo-bjm.png"),
+    path.resolve(process.cwd(), "../frontend-next/public/logo-bjm.png"),
+    path.resolve(process.cwd(), "frontend-next/public/logo-bjm.png"),
+    path.resolve(path.dirname(currentFilePath), "../../../frontend-next/public/logo-bjm.png"),
+  ];
+
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? null;
+};
 
 const sanitizePdfText = (value: string) =>
   value
@@ -124,7 +137,11 @@ const paethPredictor = (left: number, up: number, upLeft: number) => {
 const readEmbeddedLogo = (): EmbeddedPngImage => {
   if (cachedLogo) return cachedLogo;
 
-  const logoPath = path.resolve("/home/joao/projetos/bjm-facens/frontend-next/public/logo-bjm.png");
+  const logoPath = resolveLogoPath();
+  if (!logoPath) {
+    throw new Error("Logo PNG nao encontrada para geracao do PDF.");
+  }
+
   const buffer = fs.readFileSync(logoPath);
   if (!buffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
     throw new Error("Logo PNG invalida.");
@@ -212,7 +229,21 @@ const readEmbeddedLogo = (): EmbeddedPngImage => {
 };
 
 export const createSimplePdfBuffer = (payload: PrescriptionPdfPayload): Buffer => {
-  const logo = readEmbeddedLogo();
+  const logo = (() => {
+    try {
+      return readEmbeddedLogo();
+    } catch {
+      return null;
+    }
+  })();
+  const logoAsset =
+    logo ??
+    ({
+      width: 1,
+      height: 1,
+      rgbData: zlib.deflateSync(Buffer.from([255, 255, 255])),
+      alphaData: zlib.deflateSync(Buffer.from([255])),
+    } satisfies EmbeddedPngImage);
   const pages: string[][] = [];
   let commands: string[] = [];
   let y = PAGE_TOP;
@@ -223,10 +254,12 @@ export const createSimplePdfBuffer = (payload: PrescriptionPdfPayload): Buffer =
     y = PAGE_TOP;
 
     commands.push(rect(0, PAGE_HEIGHT - 112, PAGE_WIDTH, 112, rgb(WHITE)));
-    commands.push(image(PAGE_LEFT, PAGE_HEIGHT - 88, 112, 52, "Im1"));
-    commands.push(text(PAGE_LEFT + 128, PAGE_HEIGHT - 66, "Prescricao", { font: "F2", size: 20, color: rgb(TEXT) }));
+    if (logo) {
+      commands.push(image(PAGE_LEFT, PAGE_HEIGHT - 88, 112, 52, "Im1"));
+    }
+    commands.push(text(PAGE_LEFT + (logo ? 128 : 0), PAGE_HEIGHT - 66, "Prescricao", { font: "F2", size: 20, color: rgb(TEXT) }));
     commands.push(
-      text(PAGE_LEFT + 128, PAGE_HEIGHT - 86, "Documento liberado para consulta do paciente", {
+      text(PAGE_LEFT + (logo ? 128 : 0), PAGE_HEIGHT - 86, "Documento liberado para consulta do paciente", {
         size: 10,
         color: rgb(TEXT_SOFT),
       }),
@@ -354,10 +387,10 @@ export const createSimplePdfBuffer = (payload: PrescriptionPdfPayload): Buffer =
   });
 
   objects.push(
-    `<< /Type /XObject /Subtype /Image /Width ${logo.width} /Height ${logo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /SMask ${imageMaskObjectId} 0 R /Length ${logo.rgbData.length} >>\nstream\n${logo.rgbData.toString("binary")}\nendstream`,
+    `<< /Type /XObject /Subtype /Image /Width ${logoAsset.width} /Height ${logoAsset.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /SMask ${imageMaskObjectId} 0 R /Length ${logoAsset.rgbData.length} >>\nstream\n${logoAsset.rgbData.toString("binary")}\nendstream`,
   );
   objects.push(
-    `<< /Type /XObject /Subtype /Image /Width ${logo.width} /Height ${logo.height} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode /Length ${logo.alphaData.length} >>\nstream\n${logo.alphaData.toString("binary")}\nendstream`,
+    `<< /Type /XObject /Subtype /Image /Width ${logoAsset.width} /Height ${logoAsset.height} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode /Length ${logoAsset.alphaData.length} >>\nstream\n${logoAsset.alphaData.toString("binary")}\nendstream`,
   );
   objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
   objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
