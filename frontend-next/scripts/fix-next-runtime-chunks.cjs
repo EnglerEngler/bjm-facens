@@ -3,6 +3,10 @@
 const fs = require("fs");
 const path = require("path");
 
+if (process.env.VERCEL) {
+  process.exit(0);
+}
+
 const root = process.cwd();
 const serverDir = path.join(root, ".next", "server");
 const chunksDir = path.join(serverDir, "chunks");
@@ -19,4 +23,3 @@ for (const entry of entries) {
   const to = path.join(serverDir, entry.name);
   fs.copyFileSync(from, to);
 }
-
