@@ -1,16 +1,24 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
   "buildCommand": null,
+  "installCommand": "npm install",
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": [
+        "node_modules/mysql2/**",
+        "node_modules/sqlstring/**",
+        "node_modules/denque/**",
+        "node_modules/generate-function/**",
+        "node_modules/iconv-lite/**",
+        "node_modules/long/**",
+        "node_modules/lru.min/**"
+      ]
+    }
+  },
   "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/api"
     }
-  ],
-  "functions": {
-    "api/index.ts": {
-      "includeFiles": "node_modules/mysql2/**/*"
-    }
-  }
+  ]
 }

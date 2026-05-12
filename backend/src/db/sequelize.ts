@@ -4,7 +4,6 @@ import { env } from "../config/env.js";
 
 const require = createRequire(import.meta.url);
 const mysql2 = require("mysql2");
-const mysql2Path = require.resolve("mysql2");
 
 type GlobalWithSequelize = typeof globalThis & {
   __bjmSequelize?: Sequelize;
@@ -17,7 +16,7 @@ const sequelizeOptions: Options = {
   port: env.dbPort,
   dialect: "mysql",
   dialectModule: mysql2,
-  dialectModulePath: mysql2Path,
+  dialectModulePath: require.resolve("mysql2"),
   logging: env.dbLogging ? console.log : false,
   pool: {
     max: env.nodeEnv === "production" ? 2 : 5,
