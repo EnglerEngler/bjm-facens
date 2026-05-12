@@ -1,4 +1,4 @@
-const APP_URL = "https://COLOCAR-LINK-DA-APLICACAO-VERCEL-AQUI";
+const APP_URL = "https://bjm-frontend-englers-projects.vercel.app";
 const FORM_URL = "https://forms.gle/TurChnHe3JHtMyYw6";
 
 const setLinkTargets = () => {
