@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="BJM é uma plataforma acadêmica de apoio inteligente à prescrição médica, com análise de prontuário, histórico clínico e alertas de risco antes da decisão final."
+    />
+    <title>BJM | Apoio inteligente para prescrições médicas mais seguras</title>
+    <link rel="preload" href="./assets/logo-bjm.png" as="image" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header" id="inicio">
+        <div class="container header-inner">
+          <a class="brand" href="#inicio" aria-label="BJM">
+            <img src="./assets/logo-bjm.png" alt="Logo do BJM" class="brand-logo" />
+          </a>
+
+          <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Abrir navegação">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+          <nav class="site-nav" id="site-nav" aria-label="Navegação principal">
+            <a href="#inicio">Início</a>
+            <a href="#problema">Problema</a>
+            <a href="#solucao">Solução</a>
+            <a href="#funcionalidades">Funcionalidades</a>
+            <a href="#validacao">Validação</a>
+          </nav>
+
+          <a class="button button-primary header-cta" data-app-link href="https://bjm-frontend-englers-projects.vercel.app" target="_blank" rel="noopener noreferrer">
+            Acessar BJM
+          </a>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero-section">
+          <div class="container hero-grid">
+            <div class="hero-copy reveal">
+              <p class="eyebrow">Projeto acadêmico de apoio à decisão clínica</p>
+              <h1>BJM: apoio inteligente para prescrições médicas mais seguras</h1>
+              <p class="hero-text">
+                O BJM centraliza dados do paciente, histórico clínico, anamnese e prescrição para ajudar o profissional
+                de saúde a identificar riscos, alergias e possíveis interações medicamentosas antes da conduta final.
+              </p>
+              <div class="hero-actions">
+                <a class="button button-primary" data-app-link href="https://bjm-frontend-englers-projects.vercel.app" target="_blank" rel="noopener noreferrer">
+                  Acessar aplicação
+                </a>
+                <a class="button button-secondary" data-form-link href="https://forms.gle/TurChnHe3JHtMyYw6" target="_blank" rel="noopener noreferrer">
+                  Responder formulário de validação
+                </a>
+              </div>
+              <div class="hero-tags" aria-label="Destaques do BJM">
+                <span>Prontuário integrado</span>
+                <span>Alertas clínicos</span>
+                <span>Análise assistida por IA</span>
+              </div>
+            </div>
+
+            <div class="hero-visual reveal">
+              <div class="hero-panel">
+                <div class="hero-panel-top">
+                  <span class="panel-chip">Visão do fluxo clínico</span>
+                  <span class="panel-status">Em análise</span>
+                </div>
+
+                <div class="hero-preview-card">
+                  <div class="preview-heading">
+                    <div>
+                      <strong>Paciente com histórico consolidado</strong>
+                      <p>Prontuário, anamnese e medicamentos em uso no mesmo contexto.</p>
+                    </div>
+                    <span class="score-pill">Risco moderado</span>
+                  </div>
+
+                  <div class="preview-grid">
+                    <article>
+                      <h3>O que o sistema considera</h3>
+                      <ul>
+                        <li>Alergias e intolerâncias registradas</li>
+                        <li>Condições clínicas relevantes</li>
+                        <li>Interações medicamentosas potenciais</li>
+                        <li>Histórico terapêutico do paciente</li>
+                      </ul>
+                    </article>
+                    <article>
+                      <h3>Resultado esperado</h3>
+                      <ul>
+                        <li>Mais previsibilidade na conduta</li>
+                        <li>Priorização de alertas críticos</li>
+                        <li>Rastreabilidade da decisão médica</li>
+                        <li>Melhor organização do atendimento</li>
+                      </ul>
+                    </article>
+                  </div>
+                </div>
+
+                <div class="signal-row">
+                  <div class="signal-card">
+                    <span class="signal-label">Anamnese IA</span>
+                    <strong>Contexto clínico ampliado</strong>
+                  </div>
+                  <div class="signal-card">
+                    <span class="signal-label">Prescrição</span>
+                    <strong>Checagem antes da decisão final</strong>
+                  </div>
+                  <div class="signal-card">
+                    <span class="signal-label">Auditoria</span>
+                    <strong>Histórico e justificativas rastreáveis</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="problema">
+          <div class="container section-grid">
+            <div class="section-heading reveal">
+              <p class="eyebrow">O problema</p>
+              <h2>Prescrever com segurança exige contexto clínico claro e acessível</h2>
+              <p>
+                Em ambientes de atendimento, a decisão de prescrição pode ficar fragmentada entre histórico clínico,
+                informações dispersas do paciente e risco de incompatibilidades que nem sempre aparecem com rapidez no
+                momento da conduta.
+              </p>
+            </div>
+
+            <div class="problem-list">
+              <article class="info-card reveal">
+                <h3>Risco de erro em prescrições</h3>
+                <p>Conflitos entre medicamentos, doses ou condutas podem passar despercebidos sem uma leitura integrada.</p>
+              </article>
+              <article class="info-card reveal">
+                <h3>Histórico incompleto no atendimento</h3>
+                <p>Consultar informações clínicas em fontes separadas reduz fluidez e aumenta a chance de omissões.</p>
+              </article>
+              <article class="info-card reveal">
+                <h3>Alergias e interações críticas</h3>
+                <p>Eventos adversos podem ocorrer quando sinais de risco não são destacados com prioridade suficiente.</p>
+              </article>
+              <article class="info-card reveal">
+                <h3>Apoio sem substituir o médico</h3>
+                <p>O desafio não é automatizar a decisão, e sim oferecer suporte para uma decisão profissional mais segura.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section section-accent" id="solucao">
+          <div class="container solution-layout">
+            <div class="section-heading reveal">
+              <p class="eyebrow">A solução</p>
+              <h2>O BJM organiza o atendimento e apoia a prescrição com análise clínica assistida</h2>
+              <p>
+                O sistema web foi concebido para reunir dados do paciente, prontuário, anamnese, histórico clínico e
+                prescrição em um fluxo único, com suporte de IA para leitura de contexto e emissão de alertas clínicos.
+              </p>
+            </div>
+
+            <div class="solution-points">
+              <article class="solution-card reveal">
+                <span>01</span>
+                <h3>Centralização de informações</h3>
+                <p>O profissional consulta os principais dados do paciente em um só ambiente, com mais continuidade do cuidado.</p>
+              </article>
+              <article class="solution-card reveal">
+                <span>02</span>
+                <h3>Leitura do prontuário e histórico</h3>
+                <p>A plataforma considera alergias, comorbidades, medicamentos em uso e contexto anterior de tratamento.</p>
+              </article>
+              <article class="solution-card reveal">
+                <span>03</span>
+                <h3>Alertas clínicos antes da conclusão</h3>
+                <p>O BJM destaca riscos relevantes antes da prescrição final, apoiando a análise e a revisão da conduta.</p>
+              </article>
+              <article class="solution-card reveal">
+                <span>04</span>
+                <h3>Processo mais organizado e auditável</h3>
+                <p>Decisões e justificativas permanecem registradas, favorecendo segurança, rastreabilidade e governança.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="funcionalidades">
+          <div class="container">
+            <div class="section-heading reveal">
+              <p class="eyebrow">Funcionalidades principais</p>
+              <h2>Recursos alinhados ao fluxo real do BJM</h2>
+              <p>
+                A landing reflete as capacidades identificadas no repositório do sistema, preservando o foco do produto
+                como plataforma de apoio à prescrição médica.
+              </p>
+            </div>
+
+            <div class="feature-grid">
+              <article class="feature-card reveal">
+                <h3>Cadastro e gerenciamento de pacientes</h3>
+                <p>Organização de perfis, dados clínicos e vínculo com o contexto de atendimento.</p>
+              </article>
+              <article class="feature-card reveal">
+                <h3>Registro de anamnese</h3>
+                <p>Coleta estruturada de informações relevantes para fortalecer a leitura clínica do caso.</p>
+              </article>
+              <article class="feature-card reveal">
+                <h3>Histórico clínico consolidado</h3>
+                <p>Consulta de alergias, condições, medicamentos em uso e eventos prévios de forma integrada.</p>
+              </article>
+              <article class="feature-card reveal">
+                <h3>Prescrição médica estruturada</h3>
+                <p>Registro de medicamentos, dose, frequência, duração, via e conduta em um fluxo único.</p>
+              </article>
+              <article class="feature-card reveal">
+                <h3>Alertas de alergias e riscos</h3>
+                <p>Sinalização de pontos críticos antes da conclusão da prescrição, com foco em segurança terapêutica.</p>
+              </article>
+              <article class="feature-card reveal">
+                <h3>Apoio inteligente com IA</h3>
+                <p>Leitura assistida do contexto do paciente para ampliar a análise e priorizar riscos clínicos.</p>
+              </article>
+              <article class="feature-card reveal">
+                <h3>Organização do atendimento</h3>
+                <p>Melhor continuidade operacional entre coleta de dados, avaliação clínica e decisão final.</p>
+              </article>
+              <article class="feature-card reveal">
+                <h3>Rastreabilidade e auditoria</h3>
+                <p>Histórico de interações e justificativas para reforçar governança e revisão de decisões.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="container">
+            <div class="section-heading reveal">
+              <p class="eyebrow">Benefícios</p>
+              <h2>Valor para diferentes perfis envolvidos no cuidado</h2>
+            </div>
+
+            <div class="benefit-grid">
+              <article class="benefit-card reveal">
+                <h3>Médicos</h3>
+                <p>Mais segurança na análise de prescrições, melhor visibilidade do contexto clínico e apoio sem perda de autonomia decisória.</p>
+              </article>
+              <article class="benefit-card reveal">
+                <h3>Clínicas</h3>
+                <p>Processos mais organizados, maior padronização do atendimento e reforço de rastreabilidade assistencial.</p>
+              </article>
+              <article class="benefit-card reveal">
+                <h3>Pacientes</h3>
+                <p>Melhor acompanhamento clínico, menor chance de riscos evitáveis e mais continuidade nas informações do cuidado.</p>
+              </article>
+              <article class="benefit-card reveal">
+                <h3>Equipes assistenciais</h3>
+                <p>Produtividade operacional maior, contexto compartilhado e menos dependência de consultas dispersas durante o atendimento.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section section-validation" id="validacao">
+          <div class="container validation-layout">
+            <div class="section-heading reveal">
+              <p class="eyebrow">Validação acadêmica</p>
+              <h2>O BJM está em fase de validação com usuários finais</h2>
+              <p>
+                Este projeto possui caráter acadêmico e busca validar a proposta de apoio à prescrição junto a usuários
+                finais e contextos reais de uso. O formulário vinculado nesta página é destinado exclusivamente à coleta
+                de percepção e evidências para fins acadêmicos.
+              </p>
+            </div>
+
+            <div class="validation-card reveal">
+              <h3>Privacidade e finalidade dos dados</h3>
+              <p>As respostas coletadas devem ser utilizadas somente para análise acadêmica, respeitando anonimato, privacidade e boas práticas de tratamento de dados.</p>
+              <p class="disclaimer">
+                Disclaimer: o BJM é uma ferramenta de apoio à decisão clínica e não substitui a avaliação, a conduta ou
+                a responsabilidade do profissional médico.
+              </p>
+              <a class="button button-secondary" data-form-link href="https://forms.gle/TurChnHe3JHtMyYw6" target="_blank" rel="noopener noreferrer">
+                Responder formulário
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section class="section cta-section">
+          <div class="container cta-card reveal">
+            <div>
+              <p class="eyebrow">Próximo passo</p>
+              <h2>Teste a solução e contribua com a validação do BJM</h2>
+              <p>
+                Acesse a aplicação funcional e, se fizer sentido para seu contexto, responda o formulário de validação
+                para apoiar a evolução acadêmica do projeto.
+              </p>
+            </div>
+            <div class="cta-actions">
+              <a class="button button-primary" data-app-link href="https://bjm-frontend-englers-projects.vercel.app" target="_blank" rel="noopener noreferrer">
+                Testar aplicação
+              </a>
+              <a class="button button-secondary" data-form-link href="https://forms.gle/TurChnHe3JHtMyYw6" target="_blank" rel="noopener noreferrer">
+                Responder formulário
+              </a>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div class="container footer-grid">
+          <div>
+            <a class="brand footer-brand" href="#inicio" aria-label="BJM">
+              <img src="./assets/logo-bjm.png" alt="Logo do BJM" class="brand-logo footer-logo" />
+            </a>
+          </div>
+          <div>
+            <h3>Sobre o projeto</h3>
+            <p>Projeto acadêmico voltado à segurança clínica, organização assistencial e apoio à decisão profissional.</p>
+          </div>
+          <div>
+            <h3>Créditos</h3>
+            <p>João Victor Cardoso Engler</p>
+            <p>Bruno Messias de Camargo</p>
+            <p>Matheus Rodigues Silva</p>
+          </div>
+          <div>
+            <h3>Importante</h3>
+            <p>O BJM não realiza diagnóstico médico e não substitui a decisão clínica profissional.</p>
+            <p class="footer-year">© <span id="current-year"></span> BJM</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
