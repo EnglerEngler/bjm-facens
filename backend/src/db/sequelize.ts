@@ -35,7 +35,7 @@ if (env.dbSsl) {
   sequelizeOptions.dialectOptions = {
     ssl: {
       require: true,
-      rejectUnauthorized: true,
+      rejectUnauthorized: env.dbSslRejectUnauthorized,
     },
   };
 }

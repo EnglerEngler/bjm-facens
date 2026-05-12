@@ -18,4 +18,5 @@ export const env = {
   dbPassword: process.env.DB_PASSWORD ?? "rootroot",
   dbLogging: process.env.DB_LOGGING === "true",
   dbSsl: process.env.DB_SSL === "true",
+  dbSslRejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== "false",
 };
