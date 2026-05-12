@@ -1,14 +1,17 @@
-const APP_URL = "https://bjm-frontend-englers-projects.vercel.app";
-const FORM_URL = "https://forms.gle/TurChnHe3JHtMyYw6";
+const EXTERNAL_LINKS = {
+  app: "https://bjm-frontend-englers-projects.vercel.app",
+  form: "https://forms.gle/TurChnHe3JHtMyYw6",
+};
+
+const setLinkTarget = (selector, href) => {
+  document.querySelectorAll(selector).forEach((link) => {
+    link.setAttribute("href", href);
+  });
+};
 
 const setLinkTargets = () => {
-  document.querySelectorAll("[data-app-link]").forEach((link) => {
-    link.setAttribute("href", APP_URL);
-  });
-
-  document.querySelectorAll("[data-form-link]").forEach((link) => {
-    link.setAttribute("href", FORM_URL);
-  });
+  setLinkTarget("[data-app-link]", EXTERNAL_LINKS.app);
+  setLinkTarget("[data-form-link]", EXTERNAL_LINKS.form);
 };
 
 const setupMobileMenu = () => {
