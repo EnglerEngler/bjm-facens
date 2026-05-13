@@ -99,6 +99,12 @@ export const useAuthRedirect = (options: UseAuthRedirectOptions = {}) => {
     }
 
     if (pathname === "/login") {
+      if (!session.user.lgpdAccepted) {
+        return () => {
+          cancelled = true;
+        };
+      }
+
       void checkOnboarding().catch(() => {
         if (!cancelled) router.replace(session.user.lgpdAccepted ? roleOnboardingPath(session.user.role) : LGPD_PATH);
       });
