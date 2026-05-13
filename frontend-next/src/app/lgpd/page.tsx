@@ -5,25 +5,14 @@ export const dynamic = "force-dynamic";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api-client";
-import { roleDefaultPath, roleOnboardingPath } from "@/lib/role-utils";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
 import { useAuth } from "@/providers/auth-provider";
-import type { Patient, User } from "@/types/domain";
-
-const getNextPath = async (user: User) => {
-  if (!user.onboardingCompleted) return roleOnboardingPath(user.role);
-  if (user.role !== "patient") return roleDefaultPath(user.role);
-
-  const profile = await apiRequest<Patient>("/patients/me/profile");
-  return profile.onboardingCompleted ? "/patient/dashboard" : "/patient/onboarding";
-};
+import type { User } from "@/types/domain";
 
 export default function LgpdPage() {
   useAuthRedirect({ allowPendingLgpd: true });
 
-  const router = useRouter();
   const { session, logout, updateSessionUser } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +25,6 @@ export default function LgpdPage() {
         method: "POST",
       });
       updateSessionUser(updatedUser);
-      router.replace(await getNextPath(updatedUser));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Falha ao registrar aceite LGPD.");
     } finally {
@@ -46,7 +34,6 @@ export default function LgpdPage() {
 
   const declineTerms = () => {
     logout();
-    router.replace("/login");
   };
 
   return (

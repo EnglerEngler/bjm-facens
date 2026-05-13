@@ -36,12 +36,14 @@ export const useAuthRedirect = (options: UseAuthRedirectOptions = {}) => {
       const isOnboardingRoute = pathname === onboardingPath;
       const isLgpdRoute = pathname === LGPD_PATH;
 
-      if (!session.user.lgpdAccepted && !options.allowPendingLgpd && !isLgpdRoute) {
-        router.replace(LGPD_PATH);
+      if (!session.user.lgpdAccepted) {
+        if (!options.allowPendingLgpd && !isLgpdRoute) {
+          router.replace(LGPD_PATH);
+        }
         return;
       }
 
-      if (session.user.lgpdAccepted && isLgpdRoute) {
+      if (isLgpdRoute) {
         if (!session.user.onboardingCompleted) {
           router.replace(onboardingPath);
           return;
@@ -139,5 +141,5 @@ export const useAuthRedirect = (options: UseAuthRedirectOptions = {}) => {
     return () => {
       cancelled = true;
     };
-  }, [session, loading, pathname, router, options.allowIncompleteOnboarding]);
+  }, [session, loading, pathname, router, options.allowIncompleteOnboarding, options.allowPendingLgpd]);
 };
