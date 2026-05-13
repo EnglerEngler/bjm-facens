@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api-client";
 import { useAuth } from "@/providers/auth-provider";
-import { roleDefaultPath, roleOnboardingPath } from "@/lib/role-utils";
+import { LGPD_PATH, roleDefaultPath, roleOnboardingPath } from "@/lib/role-utils";
 import type { Patient, UserRole } from "@/types/domain";
 
 const rolePrefix: Record<UserRole, string> = {
@@ -16,6 +16,7 @@ const rolePrefix: Record<UserRole, string> = {
 
 interface UseAuthRedirectOptions {
   allowIncompleteOnboarding?: boolean;
+  allowPendingLgpd?: boolean;
 }
 
 export const useAuthRedirect = (options: UseAuthRedirectOptions = {}) => {
@@ -33,6 +34,29 @@ export const useAuthRedirect = (options: UseAuthRedirectOptions = {}) => {
 
       const onboardingPath = roleOnboardingPath(session.user.role);
       const isOnboardingRoute = pathname === onboardingPath;
+      const isLgpdRoute = pathname === LGPD_PATH;
+
+      if (!session.user.lgpdAccepted && !options.allowPendingLgpd && !isLgpdRoute) {
+        router.replace(LGPD_PATH);
+        return;
+      }
+
+      if (session.user.lgpdAccepted && isLgpdRoute) {
+        if (!session.user.onboardingCompleted) {
+          router.replace(onboardingPath);
+          return;
+        }
+
+        if (session.user.role !== "patient") {
+          router.replace(roleDefaultPath(session.user.role));
+          return;
+        }
+
+        const profile = await apiRequest<Patient>("/patients/me/profile");
+        if (cancelled) return;
+        router.replace(profile.onboardingCompleted ? roleDefaultPath(session.user.role) : onboardingPath);
+        return;
+      }
 
       if (!session.user.onboardingCompleted && !options.allowIncompleteOnboarding && !isOnboardingRoute) {
         router.replace(onboardingPath);
@@ -76,7 +100,16 @@ export const useAuthRedirect = (options: UseAuthRedirectOptions = {}) => {
 
     if (pathname === "/login") {
       void checkOnboarding().catch(() => {
-        if (!cancelled) router.replace(roleOnboardingPath(session.user.role));
+        if (!cancelled) router.replace(session.user.lgpdAccepted ? roleOnboardingPath(session.user.role) : LGPD_PATH);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (pathname === LGPD_PATH) {
+      void checkOnboarding().catch(() => {
+        if (!cancelled) router.replace("/login");
       });
       return () => {
         cancelled = true;

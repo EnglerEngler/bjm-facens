@@ -308,7 +308,7 @@ export default function AdminDashboardPage() {
       const payload = (await response.json()) as ViaCepResponse;
 
       if (!response.ok || payload.erro) {
-        setFeedback("CEP nao encontrado. Preencha o endereco manualmente.");
+        setFeedback("CEP não encontrado. Preencha o endereço manualmente.");
         return;
       }
 
@@ -322,7 +322,7 @@ export default function AdminDashboardPage() {
         addressState: payload.uf?.trim().toUpperCase() || current.addressState,
       }));
     } catch {
-      setFeedback("Nao foi possivel consultar o CEP agora. Preencha o endereco manualmente.");
+      setFeedback("Não foi possível consultar o CEP agora. Preencha o endereço manualmente.");
     }
   };
 
@@ -399,7 +399,7 @@ export default function AdminDashboardPage() {
           <span className="doctor-kicker">Painel administrativo</span>
           <h1>Dashboard</h1>
           <p className="muted">
-            Acompanhe clinicas, equipes medicas e pacientes em um painel unificado, com a mesma leitura clara dos outros dashboards.
+            Acompanhe clínicas, equipes médicas e pacientes em um painel unificado, com a mesma leitura clara dos outros dashboards.
           </p>
         </div>
       </section>
@@ -408,7 +408,7 @@ export default function AdminDashboardPage() {
         <div className="doctor-search-heading">
           <div>
             <h2>Rede assistencial</h2>
-            <p className="muted">Pesquise por clinica, codigo de entrada, nome, e-mail, perfil, CPF, usuario ou data de nascimento.</p>
+            <p className="muted">Pesquise por clínica, código de entrada, nome, e-mail, perfil, CPF, usuário ou data de nascimento.</p>
           </div>
           <span className="doctor-result-chip">{resultCount} resultado(s)</span>
         </div>
@@ -419,7 +419,7 @@ export default function AdminDashboardPage() {
             className={`doctor-fact-card admin-filter-card${activeFilter === "clinics" ? " admin-filter-card-active" : ""}`}
             onClick={() => toggleFilter("clinics")}
           >
-            <span className="doctor-fact-label">Clinicas</span>
+            <span className="doctor-fact-label">Clínicas</span>
             <strong>{totals.clinics}</strong>
             <small>Unidades cadastradas no sistema</small>
           </button>
@@ -428,7 +428,7 @@ export default function AdminDashboardPage() {
             className={`doctor-fact-card admin-filter-card${activeFilter === "doctors" ? " admin-filter-card-active" : ""}`}
             onClick={() => toggleFilter("doctors")}
           >
-            <span className="doctor-fact-label">Medicos</span>
+            <span className="doctor-fact-label">Médicos</span>
             <strong>{totals.doctors}</strong>
             <small>Perfis de atendimento ativos</small>
           </button>
@@ -439,18 +439,18 @@ export default function AdminDashboardPage() {
           >
             <span className="doctor-fact-label">Pacientes</span>
             <strong>{totals.patients}</strong>
-            <small>Cadastros acompanhados pelas clinicas</small>
+            <small>Cadastros acompanhados pelas clínicas</small>
           </button>
         </div>
 
         <label htmlFor="admin-search" className="sr-only">
-          Pesquisar clinica, medico ou paciente
+          Pesquisar clínica, médico ou paciente
         </label>
         <input
           id="admin-search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Ex.: Clinica Central, 123.456.789-00, maria@, patient_, 1990-08-16"
+          placeholder="Ex.: Clínica Central, 123.456.789-00, maria@, patient_, 1990-08-16"
           className="doctor-search-input"
         />
 
@@ -471,11 +471,11 @@ export default function AdminDashboardPage() {
                 >
                   <span className="doctor-patient-card-top">
                     <strong>{clinic.clinicName}</strong>
-                    <span>Clinica</span>
+                    <span>Clínica</span>
                   </span>
-                  <span className="muted">Codigo de entrada {clinic.joinCode}</span>
+                  <span className="muted">Código de entrada {clinic.joinCode}</span>
                   <span className="doctor-patient-card-meta">
-                    ID {clinic.clinicId} · {clinic.doctors.length} medico(s) · {clinic.patients.length} paciente(s)
+                    ID {clinic.clinicId} · {clinic.doctors.length} médico(s) · {clinic.patients.length} paciente(s)
                   </span>
                 </button>
               ))}
@@ -493,11 +493,11 @@ export default function AdminDashboardPage() {
                 >
                   <span className="doctor-patient-card-top">
                     <strong>{user.name}</strong>
-                    <span>{user.role === "doctor" ? "Medico" : formatDate(user.birthDate)}</span>
+                    <span>{user.role === "doctor" ? "Médico" : formatDate(user.birthDate)}</span>
                   </span>
                   <span className="muted">{user.email}</span>
                   <span className="doctor-patient-card-meta">
-                    {user.role === "doctor" ? "Perfil medico" : `Perfil paciente · CPF ${user.cpf ? formatCpf(user.cpf) : "pendente"}`} · {user.clinicName}
+                    {user.role === "doctor" ? "Perfil médico" : `Perfil paciente · CPF ${user.cpf ? formatCpf(user.cpf) : "pendente"}`} · {user.clinicName}
                   </span>
                 </button>
               );
@@ -512,7 +512,7 @@ export default function AdminDashboardPage() {
           <div className="patient-dashboard-empty-state admin-dashboard-empty-state">
             <div>
               <strong>Nenhum resultado para a busca atual</strong>
-              <p className="muted">Tente outro nome, identificador, e-mail ou codigo de clinica para refinar a consulta.</p>
+              <p className="muted">Tente outro nome, identificador, e-mail ou código de clínica para refinar a consulta.</p>
             </div>
           </div>
         )}
@@ -523,7 +523,7 @@ export default function AdminDashboardPage() {
           <section className="admin-editor-card">
             <div className="doctor-record-header">
               <div>
-                <span className="doctor-section-label">Edicao</span>
+                <span className="doctor-section-label">Edição</span>
                 <h2>
                   {selectedUser
                     ? `Editar ${selectedUser.name}`
@@ -539,8 +539,8 @@ export default function AdminDashboardPage() {
               <section className="card doctor-record-card">
                 <div className="patient-dashboard-empty-state admin-dashboard-empty-state">
                   <div>
-                    <strong>Escolha um medico ou paciente</strong>
-                    <p className="muted">Clique em um card acima para abrir o painel de edicao.</p>
+                    <strong>Escolha um médico ou paciente</strong>
+                    <p className="muted">Clique em um card acima para abrir o painel de edição.</p>
                   </div>
                 </div>
               </section>
@@ -550,24 +550,24 @@ export default function AdminDashboardPage() {
               <section className="card doctor-record-card">
                 <div className="doctor-record-header">
                   <div>
-                    <span className="doctor-section-label">Clinica</span>
+                    <span className="doctor-section-label">Clínica</span>
                     <h2>{selectedClinic.clinicName}</h2>
-                    <p className="muted">Visualizacao institucional da clinica selecionada.</p>
+                    <p className="muted">Visualização institucional da clínica selecionada.</p>
                   </div>
                 </div>
 
                 <section className="doctor-anamnesis-card">
-                  <h3>Identificacao</h3>
+                  <h3>Identificação</h3>
                   <div className="doctor-facts-grid">
                     <article className="doctor-fact-card">
-                      <span className="doctor-fact-label">Clinica</span>
+                      <span className="doctor-fact-label">Clínica</span>
                       <strong>{selectedClinic.clinicName}</strong>
                       <small>ID {selectedClinic.clinicId}</small>
                     </article>
                     <article className="doctor-fact-card">
-                      <span className="doctor-fact-label">Codigo de entrada</span>
+                      <span className="doctor-fact-label">Código de entrada</span>
                       <strong>{selectedClinic.joinCode}</strong>
-                      <small>Codigo usado para vinculacao</small>
+                      <small>Código usado para vinculação</small>
                     </article>
                   </div>
                 </section>
@@ -576,14 +576,14 @@ export default function AdminDashboardPage() {
                   <h3>Rede vinculada</h3>
                   <div className="doctor-facts-grid">
                     <article className="doctor-fact-card">
-                      <span className="doctor-fact-label">Medicos</span>
+                      <span className="doctor-fact-label">Médicos</span>
                       <strong>{selectedClinic.doctors.length}</strong>
-                      <small>Perfis medicos vinculados</small>
+                      <small>Perfis médicos vinculados</small>
                     </article>
                     <article className="doctor-fact-card">
                       <span className="doctor-fact-label">Pacientes</span>
                       <strong>{selectedClinic.patients.length}</strong>
-                      <small>Cadastros acompanhados por esta clinica</small>
+                      <small>Cadastros acompanhados por esta clínica</small>
                     </article>
                   </div>
                 </section>
@@ -597,7 +597,7 @@ export default function AdminDashboardPage() {
                     <div>
                       <span className="doctor-section-label">Conta</span>
                       <h2>Nome e e-mail</h2>
-                      <p className="muted">Esses dados identificam o usuario no acesso e nos paines internos.</p>
+                      <p className="muted">Esses dados identificam o usuário no acesso e nos painéis internos.</p>
                     </div>
                   </div>
 
@@ -629,11 +629,11 @@ export default function AdminDashboardPage() {
                   <div className="doctor-record-header">
                     <div>
                       <span className="doctor-section-label">Perfil</span>
-                      <h2>Dados do usuario selecionado</h2>
+                      <h2>Dados do usuário selecionado</h2>
                       <p className="muted">
                         {selectedUser.role === "patient"
                           ? "O admin pode revisar e editar todos os dados cadastrais do paciente nesta tela."
-                          : "O admin pode ajustar acesso e dados basicos do medico nesta tela."}
+                          : "O admin pode ajustar acesso e dados básicos do médico nesta tela."}
                       </p>
                     </div>
                   </div>
@@ -643,18 +643,18 @@ export default function AdminDashboardPage() {
                     <div className="doctor-facts-grid">
                       <article className="doctor-fact-card">
                         <span className="doctor-fact-label">Tipo de perfil</span>
-                        <strong>{selectedUser.role === "doctor" ? "Medico" : "Paciente"}</strong>
+                        <strong>{selectedUser.role === "doctor" ? "Médico" : "Paciente"}</strong>
                         <small>Profile ID {selectedUser.id}</small>
                       </article>
                       <article className="doctor-fact-card">
-                        <span className="doctor-fact-label">Usuario</span>
+                        <span className="doctor-fact-label">Usuário</span>
                         <strong>{selectedUser.userId}</strong>
                         <small>{selectedUser.email}</small>
                       </article>
                       <article className="doctor-fact-card">
-                        <span className="doctor-fact-label">Clinica</span>
+                        <span className="doctor-fact-label">Clínica</span>
                         <strong>{selectedUser.clinicName}</strong>
-                        <small>Codigo {selectedUser.joinCode}</small>
+                        <small>Código {selectedUser.joinCode}</small>
                       </article>
                     </div>
                   </section>
@@ -680,7 +680,7 @@ export default function AdminDashboardPage() {
                             <input type="date" value={editForm.birthDate} onChange={(event) => setProfileField("birthDate", event.target.value)} required />
                           </label>
                           <label>
-                            Sexo biologico
+                            Sexo biológico
                             <select
                               value={editForm.biologicalSex}
                               onChange={(event) => setProfileField("biologicalSex", event.target.value as PatientProfileFormState["biologicalSex"])}
@@ -753,7 +753,7 @@ export default function AdminDashboardPage() {
                       </section>
 
                       <section className="doctor-anamnesis-card">
-                        <h3>Contato de emergencia</h3>
+                        <h3>Contato de emergência</h3>
                         <div className="patient-onboarding-grid">
                           <label>
                             Nome do contato

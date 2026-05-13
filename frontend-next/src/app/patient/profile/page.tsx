@@ -137,7 +137,7 @@ export default function PatientProfilePage() {
 
       if (!response.ok || payload.erro) {
         setStatusTone("error");
-        setStatus("CEP invalido. Revise o numero informado antes de salvar.");
+        setStatus("CEP inválido. Revise o número informado antes de salvar.");
         return "invalid";
       }
 
@@ -157,7 +157,7 @@ export default function PatientProfilePage() {
       return "valid";
     } catch {
       setStatusTone("info");
-      setStatus("Nao foi possivel consultar o CEP agora. Preencha o endereco manualmente.");
+      setStatus("Não foi possível consultar o CEP agora. Preencha o endereço manualmente.");
       return "unavailable";
     } finally {
       setLoadingZipCode(false);
@@ -216,7 +216,7 @@ export default function PatientProfilePage() {
         <div>
           <span className="doctor-kicker">Meu perfil</span>
           <h1>{session?.user.name ?? "Perfil do paciente"}</h1>
-          <p className="muted">Edite sua conta e seus dados cadastrais. O historico clinico fica centralizado na anamnese.</p>
+          <p className="muted">Edite sua conta e seus dados cadastrais. O histórico clínico fica centralizado na anamnese.</p>
         </div>
       </section>
 
@@ -228,7 +228,7 @@ export default function PatientProfilePage() {
             <section className="card profile-pending-alert" role="alert">
               <strong>Cadastro pendente</strong>
               <p>
-                Seu acesso ainda depende da conclusao do cadastro. Revise e preencha todos os campos obrigatorios,
+                Seu acesso ainda depende da conclusão do cadastro. Revise e preencha todos os campos obrigatórios,
                 incluindo CPF, para liberar o dashboard normalmente.
               </p>
             </section>
@@ -240,7 +240,7 @@ export default function PatientProfilePage() {
                 <div>
                   <span className="doctor-section-label">Conta</span>
                   <h2>Nome e e-mail</h2>
-                  <p className="muted">Esses dados aparecem no acesso e na identificacao da sua conta.</p>
+                  <p className="muted">Esses dados aparecem no acesso e na identificação da sua conta.</p>
                 </div>
               </div>
 
@@ -267,8 +267,8 @@ export default function PatientProfilePage() {
               <div className="doctor-record-header">
                 <div>
                   <span className="doctor-section-label">Cadastro</span>
-                  <h2>Dados pessoais e endereco</h2>
-                  <p className="muted">Voce pode atualizar esses dados a qualquer momento.</p>
+                  <h2>Dados pessoais e endereço</h2>
+                  <p className="muted">Você pode atualizar esses dados a qualquer momento.</p>
                 </div>
               </div>
 
@@ -291,7 +291,7 @@ export default function PatientProfilePage() {
                     <input type="date" value={profileForm.birthDate} onChange={(event) => setProfileField("birthDate", event.target.value)} required />
                   </label>
                   <label>
-                    Sexo biologico
+                    Sexo biológico
                     <select
                       value={profileForm.biologicalSex}
                       onChange={(event) => setProfileField("biologicalSex", event.target.value as PatientProfileFormState["biologicalSex"])}
@@ -317,7 +317,7 @@ export default function PatientProfilePage() {
               </section>
 
               <section className="doctor-anamnesis-card">
-                <h3>Endereco</h3>
+                <h3>Endereço</h3>
                 <div className="patient-onboarding-grid">
                   <label>
                     CEP
@@ -336,7 +336,7 @@ export default function PatientProfilePage() {
                     <input value={profileForm.addressStreet} onChange={(event) => setProfileField("addressStreet", event.target.value)} required />
                   </label>
                   <label>
-                    Numero
+                    Número
                     <input value={profileForm.addressNumber} onChange={(event) => setProfileField("addressNumber", event.target.value)} required />
                   </label>
                   <label>
@@ -364,7 +364,7 @@ export default function PatientProfilePage() {
               </section>
 
               <section className="doctor-anamnesis-card">
-                <h3>Contato de emergencia</h3>
+                <h3>Contato de emergência</h3>
                 <div className="patient-onboarding-grid">
                   <label>
                     Nome do contato
@@ -387,7 +387,7 @@ export default function PatientProfilePage() {
               <div className="patient-onboarding-actions patient-profile-actions">
                 {status && (
                   <div className={`form-inline-alert ${statusTone === "error" ? "error" : "info"}`} role={statusTone === "error" ? "alert" : "status"}>
-                    <strong>{statusTone === "error" ? "Nao foi possivel salvar" : "Aviso sobre o CEP"}</strong>
+                    <strong>{statusTone === "error" ? "Não foi possível salvar" : "Aviso sobre o CEP"}</strong>
                     <span>{status}</span>
                   </div>
                 )}
@@ -401,9 +401,9 @@ export default function PatientProfilePage() {
           <section className="card doctor-record-card">
             <div className="doctor-record-header">
               <div>
-                <span className="doctor-section-label">Historico clinico</span>
+                <span className="doctor-section-label">Histórico clínico</span>
                 <h2>Anamnese e sintomas</h2>
-                <p className="muted">Qualquer alteracao no historico clinico deve ser feita na anamnese.</p>
+                <p className="muted">Qualquer alteração no histórico clínico deve ser feita na anamnese.</p>
               </div>
               <Link href="/patient/anamnesis" className="doctor-action-button doctor-action-button-primary">
                 Abrir anamnese
@@ -414,17 +414,17 @@ export default function PatientProfilePage() {
               <article className="doctor-fact-card">
                 <span className="doctor-fact-label">Status do cadastro</span>
                 <strong>{patient?.onboardingCompleted ? "Completo" : "Pendente"}</strong>
-                <small>Atualize os dados acima sempre que necessario</small>
+                <small>Atualize os dados acima sempre que necessário</small>
               </article>
               <article className="doctor-fact-card">
-                <span className="doctor-fact-label">Historico clinico</span>
+                <span className="doctor-fact-label">Histórico clínico</span>
                 <strong>Pela anamnese</strong>
-                <small>Alergias, sintomas e contexto de saude ficam centralizados la</small>
+                <small>Alergias, sintomas e contexto de saúde ficam centralizados lá</small>
               </article>
             </div>
           </section>
 
-          {loadingZipCode && <p className="muted">Buscando endereco pelo CEP...</p>}
+          {loadingZipCode && <p className="muted">Buscando endereço pelo CEP...</p>}
         </>
       )}
     </main>

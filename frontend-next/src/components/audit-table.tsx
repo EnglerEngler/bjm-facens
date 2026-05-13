@@ -71,7 +71,7 @@ export function AuditTable({ logs, emptyMessage = "Nenhum log encontrado." }: Au
         <div>
           <span className="doctor-section-label">Eventos</span>
           <h2>Trilha de auditoria</h2>
-          <p className="muted">Busque por paciente, ator, acao, recurso, identificador ou IP para encontrar rapidamente o evento certo.</p>
+          <p className="muted">Busque por paciente, ator, ação, recurso, identificador ou IP para encontrar rapidamente o evento certo.</p>
         </div>
         <span className="doctor-result-chip">{filteredLogs.length} resultado(s)</span>
       </div>
@@ -129,13 +129,13 @@ export function AuditTable({ logs, emptyMessage = "Nenhum log encontrado." }: Au
                 <div>
                   <strong>{formatAction(log.action)}</strong>
                   <p className="muted">
-                    Ator: {log.actorName ?? "Usuario nao identificado"}
+                    Ator: {log.actorName ?? "Usuário não identificado"}
                     {log.actorEmail ? ` · ${log.actorEmail}` : ` · ${log.actorUserId}`}
                   </p>
                 </div>
                 <div className="audit-event-patient">
                   <span>Paciente</span>
-                  <strong>{log.patientName ?? "Nao relacionado"}</strong>
+                  <strong>{log.patientName ?? "Não relacionado"}</strong>
                   <small>{log.patientId ?? "Sem paciente vinculado"}</small>
                 </div>
               </div>

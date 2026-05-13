@@ -15,7 +15,7 @@ export function OpenPrescriptionPdfButton({ prescriptionId, className }: OpenPre
   const openPdf = async () => {
     const session = readSession();
     if (!session?.token) {
-      window.alert("Sessao expirada. Entre novamente para abrir a prescricao.");
+      window.alert("Sessão expirada. Entre novamente para abrir a prescrição.");
       return;
     }
 
@@ -28,7 +28,7 @@ export function OpenPrescriptionPdfButton({ prescriptionId, className }: OpenPre
       });
 
       if (!response.ok) {
-        throw new Error("Falha ao abrir PDF da prescricao.");
+        throw new Error("Falha ao abrir PDF da prescrição.");
       }
 
       const blob = await response.blob();
@@ -36,7 +36,7 @@ export function OpenPrescriptionPdfButton({ prescriptionId, className }: OpenPre
       window.open(url, "_blank", "noopener,noreferrer");
       window.setTimeout(() => window.URL.revokeObjectURL(url), 60000);
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Falha ao abrir PDF da prescricao.");
+      window.alert(error instanceof Error ? error.message : "Falha ao abrir PDF da prescrição.");
     } finally {
       setLoading(false);
     }

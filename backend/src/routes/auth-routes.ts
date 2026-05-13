@@ -1,10 +1,19 @@
 import bcrypt from "bcryptjs";
 import { Router } from "express";
 import { z } from "zod";
-import { ClinicModel, UserModel } from "../db/models/index.js";
+import { AuditLogModel, ClinicModel, UserModel } from "../db/models/index.js";
 import { authMiddleware } from "../middleware/auth-middleware.js";
 import { addAuditLog } from "../services/audit-service.js";
-import { loginUser, refreshAuthToken, registerUser, requestPasswordReset, resetPassword } from "../services/auth-service.js";
+import {
+  getLgpdAcceptance,
+  LGPD_ACCEPTED_ACTION,
+  loginUser,
+  refreshAuthToken,
+  registerUser,
+  requestPasswordReset,
+  resetPassword,
+} from "../services/auth-service.js";
+import { createId } from "../utils/id.js";
 import { HttpError } from "../utils/http-error.js";
 
 const optionalText = z.preprocess(
@@ -26,7 +35,7 @@ const registerSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["clinicJoinCode"],
-        message: "Codigo da clinica e obrigatorio para medico e paciente.",
+        message: "Código da clínica é obrigatório para médico e paciente.",
       });
     }
 
@@ -34,7 +43,7 @@ const registerSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["clinicJoinCode"],
-        message: "Codigo da clinica deve ter ao menos 6 caracteres.",
+        message: "Código da clínica deve ter ao menos 6 caracteres.",
       });
     }
 
@@ -42,7 +51,7 @@ const registerSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["clinicName"],
-        message: "Nome da clinica e obrigatorio para admin da clinica.",
+        message: "Nome da clínica é obrigatório para admin da clínica.",
       });
     }
 
@@ -50,7 +59,7 @@ const registerSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["clinicName"],
-        message: "Nome da clinica deve ter ao menos 3 caracteres.",
+        message: "Nome da clínica deve ter ao menos 3 caracteres.",
       });
     }
   });
@@ -93,16 +102,22 @@ const updateClinicProfileSchema = z.object({
 
 export const authRoutes = Router();
 
-const serializeUser = (user: UserModel) => ({
-  id: user.id,
-  name: user.name,
-  email: user.email,
-  role: user.role,
-  clinicId: user.clinicId ?? undefined,
-  onboardingCompleted: user.onboardingCompleted,
-  onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
-  createdAt: user.createdAt.toISOString(),
-});
+const serializeUser = async (user: UserModel) => {
+  const lgpdAcceptance = await getLgpdAcceptance(user.id);
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    clinicId: user.clinicId ?? undefined,
+    lgpdAccepted: lgpdAcceptance.lgpdAccepted,
+    lgpdAcceptedAt: lgpdAcceptance.lgpdAcceptedAt,
+    onboardingCompleted: user.onboardingCompleted,
+    onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
+    createdAt: user.createdAt.toISOString(),
+  };
+};
 
 authRoutes.post("/register", async (req, res, next) => {
   try {
@@ -170,9 +185,9 @@ authRoutes.post("/reset-password", async (req, res, next) => {
 authRoutes.get("/me", authMiddleware, async (req, res, next) => {
   try {
     const user = await UserModel.findByPk(req.auth!.userId);
-    if (!user) throw new HttpError("Usuario nao encontrado.", 404);
+    if (!user) throw new HttpError("Usuário não encontrado.", 404);
 
-    res.json(serializeUser(user));
+    res.json(await serializeUser(user));
   } catch (error) {
     next(error);
   }
@@ -182,12 +197,12 @@ authRoutes.put("/me", authMiddleware, async (req, res, next) => {
   try {
     const payload = updateMeSchema.parse(req.body);
     const user = await UserModel.findByPk(req.auth!.userId);
-    if (!user) throw new HttpError("Usuario nao encontrado.", 404);
+    if (!user) throw new HttpError("Usuário não encontrado.", 404);
 
     const normalizedEmail = payload.email.trim().toLowerCase();
     const existing = await UserModel.findOne({ where: { email: normalizedEmail } });
     if (existing && existing.id !== user.id) {
-      throw new HttpError("E-mail ja cadastrado.", 409);
+      throw new HttpError("E-mail já cadastrado.", 409);
     }
 
     user.name = payload.name.trim();
@@ -203,7 +218,51 @@ authRoutes.put("/me", authMiddleware, async (req, res, next) => {
       ip: req.ip,
     });
 
-    res.json(serializeUser(user));
+    res.json(await serializeUser(user));
+  } catch (error) {
+    next(error);
+  }
+});
+
+authRoutes.post("/me/lgpd-acceptance", authMiddleware, async (req, res, next) => {
+  try {
+    const user = await UserModel.findByPk(req.auth!.userId);
+    if (!user) throw new HttpError("Usuário não encontrado.", 404);
+
+    const existingAcceptance = await AuditLogModel.findOne({
+      where: {
+        actorUserId: user.id,
+        action: LGPD_ACCEPTED_ACTION,
+      },
+    });
+
+    if (!existingAcceptance) {
+      await AuditLogModel.create({
+        id: createId("audit"),
+        actorUserId: user.id,
+        action: LGPD_ACCEPTED_ACTION,
+        resource: "users",
+        resourceId: user.id,
+        ip: req.ip ?? "0.0.0.0",
+        metadata: {
+          acceptedAt: new Date().toISOString(),
+        },
+        createdAt: new Date(),
+      });
+    }
+
+    addAuditLog({
+      actorUserId: user.id,
+      action: "user.lgpd.screen.completed",
+      resource: "users",
+      resourceId: user.id,
+      ip: req.ip,
+      metadata: {
+        accepted: true,
+      },
+    });
+
+    res.json(await serializeUser(user));
   } catch (error) {
     next(error);
   }
@@ -213,7 +272,7 @@ authRoutes.put("/me/onboarding", authMiddleware, async (req, res, next) => {
   try {
     const payload = completeOnboardingSchema.parse(req.body);
     const user = await UserModel.findByPk(req.auth!.userId);
-    if (!user) throw new HttpError("Usuario nao encontrado.", 404);
+    if (!user) throw new HttpError("Usuário não encontrado.", 404);
 
     const normalizedEmail = payload.email.trim().toLowerCase();
     const existing = await UserModel.findOne({ where: { email: normalizedEmail } });
@@ -237,7 +296,7 @@ authRoutes.put("/me/onboarding", authMiddleware, async (req, res, next) => {
       ip: req.ip,
     });
 
-    res.json(serializeUser(user));
+    res.json(await serializeUser(user));
   } catch (error) {
     next(error);
   }
@@ -245,10 +304,10 @@ authRoutes.put("/me/onboarding", authMiddleware, async (req, res, next) => {
 
 authRoutes.get("/me/clinic", authMiddleware, async (req, res, next) => {
   try {
-    if (!req.auth?.clinicId) throw new HttpError("Usuario sem clinica vinculada.", 403);
+    if (!req.auth?.clinicId) throw new HttpError("Usuário sem clínica vinculada.", 403);
 
     const clinic = await ClinicModel.findByPk(req.auth.clinicId);
-    if (!clinic) throw new HttpError("Clinica nao encontrada.", 404);
+    if (!clinic) throw new HttpError("Clínica não encontrada.", 404);
 
     res.json({
       clinicId: clinic.id,
@@ -265,18 +324,18 @@ authRoutes.get("/me/clinic", authMiddleware, async (req, res, next) => {
 authRoutes.put("/me/clinic", authMiddleware, async (req, res, next) => {
   try {
     if (req.auth?.role !== "clinic_admin") {
-      throw new HttpError("Apenas admin de clinica pode editar este perfil.", 403);
+      throw new HttpError("Apenas admin de clínica pode editar este perfil.", 403);
     }
-    if (!req.auth.clinicId) throw new HttpError("Usuario sem clinica vinculada.", 403);
+    if (!req.auth.clinicId) throw new HttpError("Usuário sem clínica vinculada.", 403);
 
     const payload = updateClinicProfileSchema.parse(req.body);
     const clinic = await ClinicModel.findByPk(req.auth.clinicId);
-    if (!clinic) throw new HttpError("Clinica nao encontrada.", 404);
+    if (!clinic) throw new HttpError("Clínica não encontrada.", 404);
 
     const normalizedName = payload.clinicName.trim();
     const existingClinic = await ClinicModel.findOne({ where: { name: normalizedName } });
     if (existingClinic && existingClinic.id !== clinic.id) {
-      throw new HttpError("Ja existe clinica com este nome.", 409);
+      throw new HttpError("Já existe clínica com este nome.", 409);
     }
 
     clinic.name = normalizedName;

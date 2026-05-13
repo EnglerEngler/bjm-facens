@@ -48,12 +48,12 @@ const isAdmin = (req: Express.Request) => req.auth?.role === "admin";
 const ensureDoctorClinicAccess = async (req: Express.Request, patientId: string) => {
   if (isAdmin(req)) return;
   const doctor = await DoctorModel.findOne({ where: { userId: req.auth?.userId } });
-  if (!doctor) throw new HttpError("Perfil de medico nao encontrado.", 403);
+  if (!doctor) throw new HttpError("Perfil de médico não encontrado.", 403);
 
   const patient = await PatientModel.findByPk(patientId);
-  if (!patient) throw new HttpError("Paciente nao encontrado.", 404);
+  if (!patient) throw new HttpError("Paciente não encontrado.", 404);
   if (!doctor.clinicId || !patient.clinicId || patient.clinicId !== doctor.clinicId) {
-    throw new HttpError("Paciente deve pertencer a mesma clinica do medico.", 403);
+    throw new HttpError("Paciente deve pertencer à mesma clínica do médico.", 403);
   }
 };
 
@@ -134,7 +134,7 @@ prescriptionRoutes.get("/:prescriptionId", async (req, res, next) => {
       include: [{ model: PrescriptionItemModel, as: "items" }],
     });
 
-    if (!prescription) throw new HttpError("Prescricao nao encontrada.", 404);
+    if (!prescription) throw new HttpError("Prescrição não encontrada.", 404);
     await ensureDoctorClinicAccess(req, prescription.patientId);
     res.json(prescription);
   } catch (error) {
@@ -147,10 +147,10 @@ prescriptionRoutes.patch("/:prescriptionId", async (req, res, next) => {
     const prescriptionId = String(req.params.prescriptionId);
     const payload = updatePrescriptionSchema.parse(req.body);
     const prescription = await PrescriptionModel.findByPk(prescriptionId);
-    if (!prescription) throw new HttpError("Prescricao nao encontrada.", 404);
+    if (!prescription) throw new HttpError("Prescrição não encontrada.", 404);
     await ensureDoctorClinicAccess(req, prescription.patientId);
     if (prescription.status === "cancelled") {
-      throw new HttpError("Prescricao cancelada nao pode ser editada.", 409);
+      throw new HttpError("Prescrição cancelada não pode ser editada.", 409);
     }
 
     if (payload.conduct !== undefined) prescription.conduct = payload.conduct;
@@ -191,7 +191,7 @@ prescriptionRoutes.post("/:prescriptionId/analyze", async (req, res, next) => {
   try {
     const prescriptionId = String(req.params.prescriptionId);
     const prescription = await PrescriptionModel.findByPk(prescriptionId);
-    if (!prescription) throw new HttpError("Prescricao nao encontrada.", 404);
+    if (!prescription) throw new HttpError("Prescrição não encontrada.", 404);
     await ensureDoctorClinicAccess(req, prescription.patientId);
     const result = await runClinicalAnalysis(prescriptionId);
     addAuditLog({
@@ -212,7 +212,7 @@ prescriptionRoutes.get("/:prescriptionId/alerts", async (req, res, next) => {
   try {
     const prescriptionId = String(req.params.prescriptionId);
     const prescription = await PrescriptionModel.findByPk(prescriptionId);
-    if (!prescription) throw new HttpError("Prescricao nao encontrada.", 404);
+    if (!prescription) throw new HttpError("Prescrição não encontrada.", 404);
     await ensureDoctorClinicAccess(req, prescription.patientId);
     const alerts = await RiskAlertModel.findAll({
       where: { prescriptionId },
@@ -229,11 +229,11 @@ prescriptionRoutes.post("/alerts/:alertId/decision", async (req, res, next) => {
     const alertId = String(req.params.alertId);
     const payload = decisionSchema.parse(req.body);
     const alert = await RiskAlertModel.findByPk(alertId);
-    if (!alert) throw new HttpError("Alerta nao encontrado.", 404);
+    if (!alert) throw new HttpError("Alerta não encontrado.", 404);
     await ensureDoctorClinicAccess(req, alert.patientId);
 
     if (alert.severity === "critical" && !payload.justification) {
-      throw new HttpError("Alerta critico exige justificativa.", 422);
+      throw new HttpError("Alerta crítico exige justificativa.", 422);
     }
 
     alert.status = payload.action;
@@ -270,7 +270,7 @@ prescriptionRoutes.delete("/:prescriptionId", async (req, res, next) => {
   try {
     const prescriptionId = String(req.params.prescriptionId);
     const prescription = await PrescriptionModel.findByPk(prescriptionId);
-    if (!prescription) throw new HttpError("Prescricao nao encontrada.", 404);
+    if (!prescription) throw new HttpError("Prescrição não encontrada.", 404);
     await ensureDoctorClinicAccess(req, prescription.patientId);
 
     prescription.status = "cancelled";

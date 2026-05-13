@@ -3,13 +3,13 @@ import { ZodError } from "zod";
 import { HttpError } from "../utils/http-error.js";
 
 export const notFoundMiddleware = (_req: Request, _res: Response, next: NextFunction) => {
-  next(new HttpError("Rota nao encontrada.", 404));
+  next(new HttpError("Rota não encontrada.", 404));
 };
 
 export const errorMiddleware = (error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (error instanceof ZodError) {
     return res.status(422).json({
-      message: "Erro de validacao.",
+      message: "Erro de validação.",
       issues: error.issues.map((issue) => ({
         path: issue.path.join("."),
         message: issue.message,

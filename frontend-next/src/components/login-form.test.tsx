@@ -14,6 +14,8 @@ jest.mock("@/providers/auth-provider", () => ({
         name: "Doctor QA",
         email: "doctor@bjm.local",
         role: "doctor",
+        lgpdAccepted: true,
+        lgpdAcceptedAt: "2026-03-12T11:00:00.000Z",
         onboardingCompleted: true,
         onboardingCompletedAt: "2026-03-12T12:00:00.000Z",
         createdAt: "2026-03-12T12:00:00.000Z",
@@ -51,7 +53,7 @@ describe("LoginForm", () => {
     await userEvent.type(screen.getByLabelText(/^e-mail/i), "maria@teste.com");
     await userEvent.type(screen.getByLabelText(/^senha/i), "123");
     await userEvent.selectOptions(screen.getByLabelText(/perfil/i), "clinic_admin");
-    await userEvent.type(screen.getByLabelText(/nome da clínica/i), "Clinica Teste");
+    await userEvent.type(screen.getByLabelText(/nome da clínica/i), "Clínica Teste");
     await userEvent.click(screen.getByRole("button", { name: /cadastrar/i }));
 
     expect(await screen.findByText(/senha deve ter ao menos 6 caracteres/i)).toBeInTheDocument();

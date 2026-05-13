@@ -33,7 +33,7 @@ export default function PatientPrescriptionDetailsPage() {
         const data = await apiRequest<Prescription>(`/patients/me/prescriptions/${prescriptionId}`);
         setPrescription(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Falha ao carregar prescricao.");
+        setError(err instanceof Error ? err.message : "Falha ao carregar prescrição.");
       } finally {
         setLoading(false);
       }
@@ -46,9 +46,9 @@ export default function PatientPrescriptionDetailsPage() {
     <main className="doctor-dashboard patient-dashboard">
       <section className="doctor-hero patient-dashboard-hero">
         <div>
-          <span className="doctor-kicker">Prescricao</span>
+          <span className="doctor-kicker">Prescrição</span>
           <h1>Orientacoes liberadas</h1>
-          <p className="muted">Consulte a conduta e os medicamentos liberados para voce.</p>
+          <p className="muted">Consulte a conduta e os medicamentos liberados para você.</p>
         </div>
       </section>
 
@@ -56,7 +56,7 @@ export default function PatientPrescriptionDetailsPage() {
         <div className="doctor-record-header">
           <div>
             <span className="doctor-section-label">Detalhes</span>
-            <h2>Prescricao</h2>
+            <h2>Prescrição</h2>
             {prescription ? <p className="muted">Liberada em {formatDateTime(prescription.createdAt)}</p> : null}
           </div>
           <Link href="/patient/dashboard" className="doctor-action-button doctor-action-button-secondary">
@@ -64,7 +64,7 @@ export default function PatientPrescriptionDetailsPage() {
           </Link>
         </div>
 
-        {loading && <p>Carregando prescricao...</p>}
+        {loading && <p>Carregando prescrição...</p>}
         {error && <p className="error">{error}</p>}
 
         {prescription ? (

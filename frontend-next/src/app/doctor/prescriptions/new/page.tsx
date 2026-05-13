@@ -44,12 +44,12 @@ export default function NewPrescriptionPage() {
       } catch (err) {
         setAiDraft(null);
         if (err instanceof ApiError && err.status === 404) {
-          setAiDraftError("Paciente nao encontrado para gerar o rascunho assistido.");
+          setAiDraftError("Paciente não encontrado para gerar o rascunho assistido.");
         } else if (err instanceof ApiError && err.status === 422 && err.message.toLowerCase().includes("anamnese")) {
           setAnamnesisPending(true);
-          setAiDraftError("A sugestao por IA ainda nao esta disponivel porque o paciente nao preencheu a anamnese.");
+          setAiDraftError("A sugestão por IA ainda não está disponível porque o paciente não preencheu a anamnese.");
         } else {
-          setAiDraftError(err instanceof Error ? err.message : "Falha ao gerar sugestao inicial com IA.");
+          setAiDraftError(err instanceof Error ? err.message : "Falha ao gerar sugestão inicial com IA.");
         }
       } finally {
         setAiDraftLoading(false);
@@ -76,12 +76,12 @@ export default function NewPrescriptionPage() {
   return (
     <main>
       <h1>Nova Prescrição</h1>
-      <p className="muted">Revise a sugestao inicial da IA e ajuste medicamento, dose, frequencia, duracao e via antes de salvar.</p>
+      <p className="muted">Revise a sugestão inicial da IA e ajuste medicamento, dose, frequência, duração e via antes de salvar.</p>
       {anamnesisPending && defaultPatientId && (
         <section className="doctor-empty-state doctor-empty-state-warning">
           <div>
             <strong>Anamnese pendente</strong>
-            <p>A IA precisa da anamnese preenchida para montar um rascunho seguro. A prescricao manual continua liberada.</p>
+            <p>A IA precisa da anamnese preenchida para montar um rascunho seguro. A prescrição manual continua liberada.</p>
           </div>
           <div className="doctor-empty-state-actions">
             <Link href={`/doctor/patients/${defaultPatientId}`} className="doctor-action-button doctor-action-button-secondary">

@@ -14,12 +14,12 @@ const ensureDoctorClinicAccess = async (req: Express.Request, patientId: string)
   if (req.auth?.role === "admin") return;
 
   const doctor = await DoctorModel.findOne({ where: { userId: req.auth?.userId } });
-  if (!doctor) throw new HttpError("Perfil de medico nao encontrado.", 403);
+  if (!doctor) throw new HttpError("Perfil de médico não encontrado.", 403);
 
   const patient = await PatientModel.findByPk(patientId);
-  if (!patient) throw new HttpError("Paciente nao encontrado.", 404);
+  if (!patient) throw new HttpError("Paciente não encontrado.", 404);
   if (!doctor.clinicId || !patient.clinicId || patient.clinicId !== doctor.clinicId) {
-    throw new HttpError("Paciente deve pertencer a mesma clinica do medico.", 403);
+    throw new HttpError("Paciente deve pertencer à mesma clínica do médico.", 403);
   }
 };
 

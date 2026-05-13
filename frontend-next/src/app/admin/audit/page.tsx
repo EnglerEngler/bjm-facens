@@ -47,7 +47,7 @@ export default function AdminAuditPage() {
         <div>
           <span className="doctor-kicker">Auditoria administrativa</span>
           <h1>Monitoramento dos eventos do sistema</h1>
-          <p className="muted">Acompanhe a trilha recente de operacoes criticas, acessos e alteracoes registradas na plataforma.</p>
+          <p className="muted">Acompanhe a trilha recente de operações críticas, acessos e alterações registradas na plataforma.</p>
         </div>
       </section>
 
@@ -68,7 +68,7 @@ export default function AdminAuditPage() {
           <article className="doctor-fact-card">
             <span className="doctor-fact-label">Atores</span>
             <strong>{metrics.actors}</strong>
-            <small>Usuarios que geraram logs</small>
+            <small>Usuários que geraram logs</small>
           </article>
           <article className="doctor-fact-card">
             <span className="doctor-fact-label">Recursos</span>

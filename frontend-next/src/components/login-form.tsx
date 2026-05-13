@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { apiRequest } from "@/lib/api-client";
+import { pushFlashToast } from "@/lib/flash-toast";
 import { useAuth } from "@/providers/auth-provider";
-import { roleDefaultPath, roleOnboardingPath } from "@/lib/role-utils";
+import { LGPD_PATH, roleDefaultPath, roleOnboardingPath } from "@/lib/role-utils";
 import type { Patient, User, UserRole } from "@/types/domain";
 
 const loginSchema = z.object({
@@ -75,6 +76,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
 
   const resolvePostLoginPath = async (user: User) => {
+    if (!user.lgpdAccepted) return LGPD_PATH;
     if (!user.onboardingCompleted) return roleOnboardingPath(user.role);
     if (user.role !== "patient") return roleDefaultPath(user.role);
     const profile = await apiRequest<Patient>("/patients/me/profile");
@@ -94,8 +96,13 @@ export function LoginForm() {
       } else {
         const parsed = registerSchema.parse({ name, email, password, role, clinicName, clinicJoinCode });
         await register(parsed);
-        const session = await login(parsed.email, parsed.password, true);
-        router.push(await resolvePostLoginPath(session.user));
+        setMode("login");
+        setName("");
+        setPassword("");
+        setClinicName("");
+        setClinicJoinCode("");
+        setRememberMe(true);
+        pushFlashToast("Conta criada. Faça login para continuar.");
       }
     } catch (err) {
       setError(getReadableErrorMessage(err));

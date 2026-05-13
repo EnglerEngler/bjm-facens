@@ -42,7 +42,7 @@ export default function ClinicOnboardingPage() {
           cnpj: formatCnpj(clinic.cnpj ?? ""),
         });
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : "Falha ao carregar dados da clinica.");
+        setStatus(error instanceof Error ? error.message : "Falha ao carregar dados da clínica.");
       } finally {
         setLoading(false);
       }
@@ -80,10 +80,10 @@ export default function ClinicOnboardingPage() {
         clinicName: updatedClinic.clinicName,
         cnpj: formatCnpj(updatedClinic.cnpj ?? ""),
       });
-      pushFlashToast("Clinica configurada com sucesso.");
+      pushFlashToast("Clínica configurada com sucesso.");
       router.push("/clinic/dashboard");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Falha ao concluir onboarding da clinica.");
+      setStatus(error instanceof Error ? error.message : "Falha ao concluir onboarding da clínica.");
     } finally {
       setSaving(false);
     }
@@ -93,30 +93,30 @@ export default function ClinicOnboardingPage() {
     <main className="doctor-dashboard">
       <section className="doctor-hero clinic-hero">
         <div>
-          <span className="doctor-kicker">Onboarding da clinica</span>
+          <span className="doctor-kicker">Onboarding da clínica</span>
           <h1>Finalize os dados institucionais</h1>
-          <p className="muted">Antes de administrar equipe e pacientes, confirme os dados principais da sua clinica.</p>
+          <p className="muted">Antes de administrar equipe e pacientes, confirme os dados principais da sua clínica.</p>
         </div>
       </section>
 
       {loading ? (
-        <p>Carregando dados da clinica...</p>
+        <p>Carregando dados da clínica...</p>
       ) : (
         <>
           <form className="patient-onboarding-form" onSubmit={submit}>
             <section className="card doctor-record-card">
               <div className="doctor-record-header">
                 <div>
-                  <span className="doctor-section-label">Clinica</span>
-                  <h2>Nome da clinica e CNPJ</h2>
-                  <p className="muted">Esses dados representam a sua operacao dentro da plataforma.</p>
+                  <span className="doctor-section-label">Clínica</span>
+                  <h2>Nome da clínica e CNPJ</h2>
+                  <p className="muted">Esses dados representam a sua operação dentro da plataforma.</p>
                 </div>
               </div>
 
               <section className="doctor-anamnesis-card">
                 <div className="patient-onboarding-grid">
                   <label>
-                    Nome da clinica
+                    Nome da clínica
                     <input
                       value={form.clinicName}
                       onChange={(event) => setForm((current) => ({ ...current, clinicName: event.target.value }))}

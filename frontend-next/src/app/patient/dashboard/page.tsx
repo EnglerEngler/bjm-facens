@@ -64,9 +64,9 @@ export default function PatientDashboardPage() {
     <main className="doctor-dashboard patient-dashboard">
       <section className="doctor-hero patient-dashboard-hero">
         <div>
-          <span className="doctor-kicker">Area do paciente</span>
+          <span className="doctor-kicker">Área do paciente</span>
           <h1>Dashboard</h1>
-          <p className="muted">Acompanhe sua anamnese e as prescricoes liberadas em um painel mais claro e organizado.</p>
+          <p className="muted">Acompanhe sua anamnese e as prescrições liberadas em um painel mais claro e organizado.</p>
         </div>
       </section>
 
@@ -79,8 +79,8 @@ export default function PatientDashboardPage() {
             <div className="doctor-record-header">
               <div>
                 <span className="doctor-section-label">Anamnese</span>
-                <h2>Seu historico de saude</h2>
-                <p className="muted">Este registro alimenta o prontuario consultado pelo medico.</p>
+                <h2>Seu histórico de saúde</h2>
+                <p className="muted">Este registro alimenta o prontuário consultado pelo médico.</p>
               </div>
             </div>
 
@@ -93,19 +93,19 @@ export default function PatientDashboardPage() {
                 </small>
               </article>
               <article className="doctor-fact-card">
-                <span className="doctor-fact-label">Ultima atualizacao</span>
-                <strong>{anamnesis?.updatedAt ? formatDate(anamnesis.updatedAt) : "Ainda nao preenchida"}</strong>
-                <small>Voce pode atualizar quando quiser</small>
+                <span className="doctor-fact-label">Última atualização</span>
+                <strong>{anamnesis?.updatedAt ? formatDate(anamnesis.updatedAt) : "Ainda não preenchida"}</strong>
+                <small>Você pode atualizar quando quiser</small>
               </article>
             </div>
 
             <div className="patient-dashboard-empty-state">
               <div>
-                <strong>{hasAnyAnswer ? "Anamnese pronta para edicao" : "Sua anamnese ainda esta vazia"}</strong>
+                <strong>{hasAnyAnswer ? "Anamnese pronta para edição" : "Sua anamnese ainda está vazia"}</strong>
                 <p className="muted">
                   {hasAnyAnswer
-                    ? "Revise ou complemente as informacoes clinicas antes da proxima consulta."
-                    : "Preencha sua anamnese para manter o prontuario completo e ajudar o medico na avaliacao."}
+                    ? "Revise ou complemente as informações clínicas antes da próxima consulta."
+                    : "Preencha sua anamnese para manter o prontuário completo e ajudar o médico na avaliação."}
                 </p>
               </div>
               <Link href="/patient/anamnesis" className="doctor-action-button doctor-action-button-primary">
@@ -117,17 +117,17 @@ export default function PatientDashboardPage() {
           <section className="card doctor-record-card">
             <div className="doctor-record-header">
               <div>
-                <span className="doctor-section-label">Prescricoes</span>
+                <span className="doctor-section-label">Prescrições</span>
                 <h2>Orientacoes liberadas</h2>
-                <p className="muted">Lista das prescricoes disponiveis para consulta.</p>
+                <p className="muted">Lista das prescrições disponíveis para consulta.</p>
               </div>
             </div>
 
             {prescriptions.length === 0 ? (
               <div className="patient-dashboard-empty-state">
                 <div>
-                  <strong>Nenhuma prescricao disponivel</strong>
-                  <p className="muted">Quando houver uma nova prescricao liberada, ela aparecera aqui com as orientacoes correspondentes.</p>
+                  <strong>Nenhuma prescrição disponível</strong>
+                  <p className="muted">Quando houver uma nova prescrição liberada, ela aparecerá aqui com as orientações correspondentes.</p>
                 </div>
               </div>
             ) : (
@@ -135,7 +135,7 @@ export default function PatientDashboardPage() {
                 {prescriptions.map((rx) => (
                   <article key={rx.id} className="doctor-patient-row patient-prescription-card">
                     <div className="doctor-patient-row-main">
-                      <strong>Prescricao liberada em {formatDate(rx.createdAt)}</strong>
+                      <strong>Prescrição liberada em {formatDate(rx.createdAt)}</strong>
                       <p className="muted">{rx.orientation}</p>
                       {rx.items.length > 0 ? (
                         <div className="patient-prescription-items">
@@ -151,7 +151,7 @@ export default function PatientDashboardPage() {
                       ) : null}
                       <div className="patient-prescription-actions">
                         <Link href={`/patient/prescriptions/${rx.id}`} className="doctor-action-button doctor-action-button-primary">
-                          Abrir prescricao
+                          Abrir prescrição
                         </Link>
                       </div>
                     </div>

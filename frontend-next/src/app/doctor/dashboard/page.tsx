@@ -65,9 +65,9 @@ export default function DoctorDashboardPage() {
     <main className="doctor-dashboard">
       <section className="doctor-hero doctor-hero-compact">
         <div>
-          <span className="doctor-kicker">Painel do medico</span>
-          <h1>Buscar paciente e abrir prontuario</h1>
-          <p className="muted">Pesquise por qualquer termo disponivel do paciente e siga direto para o prontuario.</p>
+          <span className="doctor-kicker">Painel do médico</span>
+          <h1>Buscar paciente e abrir prontuário</h1>
+          <p className="muted">Pesquise por qualquer termo disponível do paciente e siga direto para o prontuário.</p>
         </div>
       </section>
 
@@ -75,7 +75,7 @@ export default function DoctorDashboardPage() {
         <div className="doctor-search-heading">
           <div>
             <h2>Buscar paciente</h2>
-            <p className="muted">Nome, CPF, usuario, nascimento, alergias, condicoes ou medicamentos em uso.</p>
+            <p className="muted">Nome, CPF, usuário, nascimento, alergias, condições ou medicamentos em uso.</p>
           </div>
           <span className="doctor-result-chip">{filteredPatients.length} paciente(s)</span>
         </div>
@@ -83,8 +83,8 @@ export default function DoctorDashboardPage() {
         <div className="doctor-facts-grid">
           <article className="doctor-fact-card">
             <span className="doctor-fact-label">Busca livre</span>
-            <strong>Nome, CPF e contexto clinico</strong>
-            <small>Localize o prontuario usando qualquer dado ja salvo</small>
+            <strong>Nome, CPF e contexto clínico</strong>
+            <small>Localize o prontuário usando qualquer dado já salvo</small>
           </article>
           <article className="doctor-fact-card">
             <span className="doctor-fact-label">Resultado atual</span>
@@ -114,12 +114,12 @@ export default function DoctorDashboardPage() {
                 <div className="doctor-patient-row-main">
                   <strong>{patient.name?.trim() || patient.userId}</strong>
                   <p className="muted">
-                    Usuario: {patient.userId}
+                    Usuário: {patient.userId}
                     {patient.cpf ? ` · CPF ${formatCpf(patient.cpf)}` : ""}
                   </p>
                 </div>
                 <Link href={`/doctor/patients/${patient.id}`} className="doctor-action-button doctor-action-button-primary">
-                  Abrir prontuario
+                  Abrir prontuário
                 </Link>
               </article>
             ))}

@@ -133,7 +133,7 @@ export default function PatientOnboardingPage() {
 
       if (!response.ok || payload.erro) {
         setStatusTone("error");
-        setStatus("CEP invalido. Revise o numero informado antes de salvar.");
+        setStatus("CEP inválido. Revise o número informado antes de salvar.");
         return "invalid";
       }
 
@@ -153,7 +153,7 @@ export default function PatientOnboardingPage() {
       return "valid";
     } catch {
       setStatusTone("info");
-      setStatus("Nao foi possivel consultar o CEP agora. Preencha o endereco manualmente.");
+      setStatus("Não foi possível consultar o CEP agora. Preencha o endereço manualmente.");
       return "unavailable";
     } finally {
       setLoadingZipCode(false);
@@ -173,7 +173,7 @@ export default function PatientOnboardingPage() {
       setStatusTone("info");
       const zipCodeValidation = await validateZipCode(form.addressZipCode);
       if (zipCodeValidation === "invalid") return;
-      if (!session) throw new Error("Sessao nao encontrada.");
+      if (!session) throw new Error("Sessão não encontrada.");
       const updatedUser = await apiRequest<User>("/auth/me/onboarding", {
         method: "PUT",
         body: JSON.stringify({
@@ -211,12 +211,12 @@ export default function PatientOnboardingPage() {
           <h1>Complete seu cadastro antes de entrar na plataforma</h1>
           <p className="muted">
             Precisamos de alguns dados pessoais e de contato para liberar seu acesso, estruturar a anamnese e manter
-            seu prontuario consistente.
+            seu prontuário consistente.
           </p>
         </div>
         <div className="doctor-hero-meta">
-          <span>Conta: {session?.user.email ?? "Nao identificada"}</span>
-          <span>Perfil de paciente em ativacao</span>
+          <span>Conta: {session?.user.email ?? "Não identificada"}</span>
+          <span>Perfil de paciente em ativação</span>
           <span>Preencha os dados obrigatorios</span>
         </div>
       </section>
@@ -226,7 +226,7 @@ export default function PatientOnboardingPage() {
           <div>
             <span className="doctor-section-label">Cadastro inicial</span>
             <h2>Dados da conta e do perfil</h2>
-            <p className="muted">Preencha os dados pessoais, contato e endereco. O acesso ao dashboard sera liberado ao concluir.</p>
+            <p className="muted">Preencha os dados pessoais, contato e endereço. O acesso ao dashboard será liberado ao concluir.</p>
           </div>
         </div>
 
@@ -281,7 +281,7 @@ export default function PatientOnboardingPage() {
                   />
                 </label>
                 <label>
-                  Sexo biologico
+                  Sexo biológico
                   <select
                     value={form.biologicalSex}
                     onChange={(event) => setField("biologicalSex", event.target.value as PatientProfileFormState["biologicalSex"])}
@@ -358,7 +358,7 @@ export default function PatientOnboardingPage() {
             </section>
 
             <section className="doctor-anamnesis-card">
-              <h3>Contato de emergencia</h3>
+              <h3>Contato de emergência</h3>
               <div className="patient-onboarding-grid">
                 <label>
                   Nome do contato
@@ -385,7 +385,7 @@ export default function PatientOnboardingPage() {
             <div className="patient-onboarding-actions">
               {status && (
                 <div className={`form-inline-alert ${statusTone === "error" ? "error" : "info"}`} role={statusTone === "error" ? "alert" : "status"}>
-                  <strong>{statusTone === "error" ? "Nao foi possivel concluir" : "Aviso sobre o CEP"}</strong>
+                  <strong>{statusTone === "error" ? "Não foi possível concluir" : "Aviso sobre o CEP"}</strong>
                   <span>{status}</span>
                 </div>
               )}
@@ -394,7 +394,7 @@ export default function PatientOnboardingPage() {
               </button>
             </div>
 
-            {loadingZipCode && <p className="muted">Buscando endereco pelo CEP...</p>}
+            {loadingZipCode && <p className="muted">Buscando endereço pelo CEP...</p>}
           </form>
         )}
       </section>

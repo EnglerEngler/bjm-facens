@@ -104,11 +104,11 @@ const isPatientOnboardingComplete = (patient: PatientModel) =>
   );
 
 const ensureClinicAccess = (req: Express.Request, patientClinicId?: string | null) => {
-  if (!req.auth) throw new HttpError("Nao autenticado.", 401);
+  if (!req.auth) throw new HttpError("Não autenticado.", 401);
   if (req.auth.role === "admin") return;
-  if (!req.auth.clinicId) throw new HttpError("Usuario sem clinica vinculada.", 403);
+  if (!req.auth.clinicId) throw new HttpError("Usuário sem clínica vinculada.", 403);
   if (!patientClinicId || patientClinicId !== req.auth.clinicId) {
-    throw new HttpError("Acesso permitido apenas para pacientes da mesma clinica.", 403);
+    throw new HttpError("Acesso permitido apenas para pacientes da mesma clínica.", 403);
   }
 };
 
@@ -117,7 +117,7 @@ patientRoutes.get("/me/prescriptions", requireRole("patient"), async (req, res, 
     const patient = await PatientModel.findOne({
       where: { userId: req.auth!.userId },
     });
-    if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
+    if (!patient) throw new HttpError("Paciente não encontrado para este usuário.", 404);
 
     const prescriptions = await PrescriptionModel.findAll({
       where: { patientId: patient.id },
@@ -136,14 +136,14 @@ patientRoutes.get("/me/prescriptions/:prescriptionId", requireRole("patient"), a
     const patient = await PatientModel.findOne({
       where: { userId: req.auth!.userId },
     });
-    if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
+    if (!patient) throw new HttpError("Paciente não encontrado para este usuário.", 404);
 
     const prescription = await PrescriptionModel.findOne({
       where: { id: String(req.params.prescriptionId), patientId: patient.id },
       include: [{ model: PrescriptionItemModel, as: "items" }],
     });
 
-    if (!prescription) throw new HttpError("Prescricao nao encontrada.", 404);
+    if (!prescription) throw new HttpError("Prescrição não encontrada.", 404);
 
     res.json(prescription);
   } catch (error) {
@@ -156,14 +156,14 @@ patientRoutes.get("/me/prescriptions/:prescriptionId/pdf", requireRole("patient"
     const patient = await PatientModel.findOne({
       where: { userId: req.auth!.userId },
     });
-    if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
+    if (!patient) throw new HttpError("Paciente não encontrado para este usuário.", 404);
 
     const prescription = await PrescriptionModel.findOne({
       where: { id: String(req.params.prescriptionId), patientId: patient.id },
       include: [{ model: PrescriptionItemModel, as: "items" }],
     });
 
-    if (!prescription) throw new HttpError("Prescricao nao encontrada.", 404);
+    if (!prescription) throw new HttpError("Prescrição não encontrada.", 404);
 
     const patientUser = await UserModel.findByPk(patient.userId);
     const prescriptionItems = prescription.get("items") as PrescriptionItemModel[] | undefined;
@@ -180,7 +180,7 @@ patientRoutes.get("/me/prescriptions/:prescriptionId/pdf", requireRole("patient"
       })),
     });
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename="prescricao-${prescription.id}.pdf"`);
+    res.setHeader("Content-Disposition", `inline; filename="prescrição-${prescription.id}.pdf"`);
     res.send(pdfBuffer);
   } catch (error) {
     next(error);
@@ -192,7 +192,7 @@ patientRoutes.get("/me/anamnesis", requireRole("patient"), async (req, res, next
     const patient = await PatientModel.findOne({
       where: { userId: req.auth!.userId },
     });
-    if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
+    if (!patient) throw new HttpError("Paciente não encontrado para este usuário.", 404);
 
     const anamnesis = await PatientAnamnesisModel.findByPk(patient.id);
 
@@ -221,7 +221,7 @@ patientRoutes.put("/me/anamnesis", requireRole("patient"), async (req, res, next
     const patient = await PatientModel.findOne({
       where: { userId: req.auth!.userId },
     });
-    if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
+    if (!patient) throw new HttpError("Paciente não encontrado para este usuário.", 404);
 
     const now = new Date();
     const anamnesis = await PatientAnamnesisModel.findByPk(patient.id);
@@ -283,7 +283,7 @@ patientRoutes.get("/me/profile", requireRole("patient"), async (req, res, next) 
     const patient = await PatientModel.findOne({
       where: { userId: req.auth!.userId },
     });
-    if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
+    if (!patient) throw new HttpError("Paciente não encontrado para este usuário.", 404);
 
     const onboardingCompleted = isPatientOnboardingComplete(patient);
     if (patient.onboardingCompleted !== onboardingCompleted) {
@@ -312,7 +312,7 @@ patientRoutes.put("/me/profile", requireRole("patient"), async (req, res, next) 
     const patient = await PatientModel.findOne({
       where: { userId: req.auth!.userId },
     });
-    if (!patient) throw new HttpError("Paciente nao encontrado para este usuario.", 404);
+    if (!patient) throw new HttpError("Paciente não encontrado para este usuário.", 404);
 
     patient.birthDate = new Date(payload.birthDate);
     patient.cpf = payload.cpf;
@@ -349,7 +349,7 @@ patientRoutes.put("/me/profile", requireRole("patient"), async (req, res, next) 
 patientRoutes.get("/", requireRole("doctor", "admin", "clinic_admin"), async (req, res, next) => {
   try {
     if (req.auth?.role !== "admin" && !req.auth?.clinicId) {
-      throw new HttpError("Usuario sem clinica vinculada.", 403);
+      throw new HttpError("Usuário sem clínica vinculada.", 403);
     }
     const where = req.auth?.role === "admin" ? {} : { clinicId: req.auth?.clinicId };
     const patients = await PatientModel.findAll({ where });
@@ -379,14 +379,14 @@ patientRoutes.post("/", requireRole("doctor", "admin", "clinic_admin"), async (r
 
     const patientUser = await UserModel.findByPk(payload.userId);
     if (!patientUser || patientUser.role !== "patient") {
-      throw new HttpError("Usuario informado nao e um paciente.", 422);
+      throw new HttpError("Usuário informado não é um paciente.", 422);
     }
 
     const profileClinicId = patientUser.clinicId ?? null;
     if (req.auth?.role !== "admin") {
-      if (!req.auth?.clinicId) throw new HttpError("Usuario sem clinica vinculada.", 403);
+      if (!req.auth?.clinicId) throw new HttpError("Usuário sem clínica vinculada.", 403);
       if (profileClinicId !== req.auth.clinicId) {
-        throw new HttpError("Paciente deve pertencer a mesma clinica.", 403);
+        throw new HttpError("Paciente deve pertencer à mesma clínica.", 403);
       }
     }
 
@@ -434,10 +434,10 @@ patientRoutes.get("/:patientId/record", requireRole("doctor", "admin", "clinic_a
   try {
     const patientId = String(req.params.patientId);
     const patient = await PatientModel.findByPk(patientId);
-    if (!patient) throw new HttpError("Paciente nao encontrado.", 404);
+    if (!patient) throw new HttpError("Paciente não encontrado.", 404);
 
     if (req.auth?.role === "patient" && req.auth.userId !== patient.userId) {
-      throw new HttpError("Paciente nao pode acessar prontuario de outro usuario.", 403);
+      throw new HttpError("Paciente não pode acessar prontuário de outro usuário.", 403);
     }
     if (req.auth?.role !== "patient") {
       ensureClinicAccess(req, patient.clinicId);
@@ -469,17 +469,17 @@ patientRoutes.patch("/:patientId/record", requireRole("doctor", "clinic_admin", 
     const patientId = String(req.params.patientId);
     const payload = updateRecordSchema.parse(req.body);
     const patient = await PatientModel.findByPk(patientId);
-    if (!patient) throw new HttpError("Paciente nao encontrado.", 404);
+    if (!patient) throw new HttpError("Paciente não encontrado.", 404);
 
     if (req.auth?.role === "patient" && req.auth.userId !== patient.userId) {
-      throw new HttpError("Paciente nao pode alterar prontuario de outro usuario.", 403);
+      throw new HttpError("Paciente não pode alterar prontuário de outro usuário.", 403);
     }
     if (req.auth?.role !== "patient") {
       ensureClinicAccess(req, patient.clinicId);
     }
 
     const record = await MedicalRecordModel.findByPk(patientId);
-    if (!record) throw new HttpError("Prontuario nao encontrado.", 404);
+    if (!record) throw new HttpError("Prontuário não encontrado.", 404);
 
     const before = record.toJSON();
     if (payload.allergies) record.allergies = payload.allergies;
@@ -516,7 +516,7 @@ patientRoutes.get("/:patientId/record/history", requireRole("doctor", "admin", "
   try {
     const patientId = String(req.params.patientId);
     const patient = await PatientModel.findByPk(patientId);
-    if (!patient) throw new HttpError("Paciente nao encontrado.", 404);
+    if (!patient) throw new HttpError("Paciente não encontrado.", 404);
     ensureClinicAccess(req, patient.clinicId);
 
     const entries = await MedicalRecordHistoryModel.findAll({
@@ -533,11 +533,11 @@ patientRoutes.get("/:patientId/anamnesis", requireRole("doctor", "admin", "clini
   try {
     const patientId = String(req.params.patientId);
     const patient = await PatientModel.findByPk(patientId);
-    if (!patient) throw new HttpError("Paciente nao encontrado.", 404);
+    if (!patient) throw new HttpError("Paciente não encontrado.", 404);
     ensureClinicAccess(req, patient.clinicId);
 
     const anamnesis = await PatientAnamnesisModel.findByPk(patient.id);
-    if (!anamnesis) throw new HttpError("Anamnese do paciente ainda nao foi preenchida.", 404);
+    if (!anamnesis) throw new HttpError("Anamnese do paciente ainda não foi preenchida.", 404);
     const user = await UserModel.findByPk(patient.userId);
 
     addAuditLog({
@@ -564,7 +564,7 @@ patientRoutes.delete("/:patientId", requireRole("admin"), async (req, res, next)
   try {
     const patientId = String(req.params.patientId);
     const patient = await PatientModel.findByPk(patientId);
-    if (!patient) throw new HttpError("Paciente nao encontrado.", 404);
+    if (!patient) throw new HttpError("Paciente não encontrado.", 404);
     await patient.destroy();
 
     addAuditLog({

@@ -81,14 +81,14 @@ export function AccountProfilePage({ role, title, description }: AccountProfileP
 
     try {
       await navigator.clipboard.writeText(clinic.joinCode);
-      pushFlashToast("Codigo de entrada copiado.");
+      pushFlashToast("Código de entrada copiado.");
     } catch {
-      setStatus("Nao foi possivel copiar o codigo de entrada.");
+      setStatus("Não foi possível copiar o código de entrada.");
     }
   };
 
   const roleLabel =
-    role === "doctor" ? "Medico" : role === "admin" ? "Administrador" : role === "clinic_admin" ? "Admin da Clinica" : "Usuario";
+    role === "doctor" ? "Médico" : role === "admin" ? "Administrador" : role === "clinic_admin" ? "Admin da Clínica" : "Usuário";
 
   return (
     <main className="doctor-dashboard">
@@ -150,7 +150,7 @@ export function AccountProfilePage({ role, title, description }: AccountProfileP
           <div>
             <span className="doctor-section-label">Resumo</span>
             <h2>Dados do seu acesso</h2>
-            <p className="muted">Informacoes principais do perfil autenticado neste momento.</p>
+            <p className="muted">Informações principais do perfil autenticado neste momento.</p>
           </div>
         </div>
 
@@ -166,11 +166,11 @@ export function AccountProfilePage({ role, title, description }: AccountProfileP
             <small>Atualizado junto com a conta</small>
           </article>
           <article className="doctor-fact-card">
-            <span className="doctor-fact-label">Codigo de entrada</span>
+            <span className="doctor-fact-label">Código de entrada</span>
             <strong>{clinic?.joinCode ?? "-"}</strong>
             {clinic ? (
               <button type="button" className="doctor-action-button doctor-action-button-secondary" onClick={copyClinicJoinCode}>
-                Copiar codigo
+                Copiar código
               </button>
             ) : (
               <small>Escopo atual do seu acesso</small>

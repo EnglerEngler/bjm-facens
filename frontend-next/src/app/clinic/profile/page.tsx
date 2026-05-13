@@ -43,7 +43,7 @@ export default function ClinicProfilePage() {
           cnpj: formatCnpj(payload.cnpj ?? ""),
         });
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : "Falha ao carregar perfil da clinica.");
+        setStatus(error instanceof Error ? error.message : "Falha ao carregar perfil da clínica.");
       } finally {
         setLoading(false);
       }
@@ -71,10 +71,10 @@ export default function ClinicProfilePage() {
         clinicName: updatedClinic.clinicName,
         cnpj: formatCnpj(updatedClinic.cnpj ?? ""),
       });
-      pushFlashToast("Dados da clinica atualizados com sucesso.");
+      pushFlashToast("Dados da clínica atualizados com sucesso.");
       router.push(roleDefaultPath("clinic_admin"));
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Falha ao atualizar perfil da clinica.");
+      setStatus(error instanceof Error ? error.message : "Falha ao atualizar perfil da clínica.");
     } finally {
       setSaving(false);
     }
@@ -84,9 +84,9 @@ export default function ClinicProfilePage() {
     <main className="doctor-dashboard">
       <section className="doctor-hero clinic-hero">
         <div>
-          <span className="doctor-kicker">Perfil da clinica</span>
-          <h1>{clinic?.clinicName ?? "Clinica"}</h1>
-          <p className="muted">Edite os dados institucionais da clinica, incluindo o CNPJ e o nome exibido na plataforma.</p>
+          <span className="doctor-kicker">Perfil da clínica</span>
+          <h1>{clinic?.clinicName ?? "Clínica"}</h1>
+          <p className="muted">Edite os dados institucionais da clínica, incluindo o CNPJ e o nome exibido na plataforma.</p>
         </div>
       </section>
 
@@ -98,16 +98,16 @@ export default function ClinicProfilePage() {
             <section className="card doctor-record-card">
               <div className="doctor-record-header">
                 <div>
-                  <span className="doctor-section-label">Clinica</span>
+                  <span className="doctor-section-label">Clínica</span>
                   <h2>Dados institucionais</h2>
-                  <p className="muted">Atualize as informacoes basicas da clinica e mantenha o CNPJ consistente.</p>
+                  <p className="muted">Atualize as informações básicas da clínica e mantenha o CNPJ consistente.</p>
                 </div>
               </div>
 
               <section className="doctor-anamnesis-card">
                 <div className="patient-onboarding-grid">
                   <label>
-                    Nome da clinica
+                    Nome da clínica
                     <input
                       value={clinicForm.clinicName}
                       onChange={(event) => setClinicForm((current) => ({ ...current, clinicName: event.target.value }))}
@@ -130,7 +130,7 @@ export default function ClinicProfilePage() {
 
               <div className="patient-onboarding-actions patient-profile-actions">
                 <button type="submit" disabled={saving} className="doctor-action-button doctor-action-button-primary">
-                  {saving ? "Salvando..." : "Salvar dados da clinica"}
+                  {saving ? "Salvando..." : "Salvar dados da clínica"}
                 </button>
               </div>
             </section>
@@ -140,25 +140,25 @@ export default function ClinicProfilePage() {
             <div className="doctor-record-header">
               <div>
                 <span className="doctor-section-label">Resumo</span>
-                <h2>Identificacao da clinica</h2>
+                <h2>Identificação da clínica</h2>
                 <p className="muted">Dados principais do vinculo institucional atual.</p>
               </div>
             </div>
 
             <div className="doctor-facts-grid">
               <article className="doctor-fact-card">
-                <span className="doctor-fact-label">Clinica</span>
+                <span className="doctor-fact-label">Clínica</span>
                 <strong>{clinic?.clinicName ?? "-"}</strong>
                 <small>ID {clinic?.clinicId ?? "-"}</small>
               </article>
               <article className="doctor-fact-card">
-                <span className="doctor-fact-label">Codigo de entrada</span>
+                <span className="doctor-fact-label">Código de entrada</span>
                 <strong>{clinic?.joinCode ?? "-"}</strong>
-                <small>Compartilhe com medico e paciente</small>
+                <small>Compartilhe com médico e paciente</small>
               </article>
               <article className="doctor-fact-card">
                 <span className="doctor-fact-label">CNPJ</span>
-                <strong>{clinic?.cnpj ? formatCnpj(clinic.cnpj) : "Nao informado"}</strong>
+                <strong>{clinic?.cnpj ? formatCnpj(clinic.cnpj) : "Não informado"}</strong>
                 <small>Mantenha este dado atualizado</small>
               </article>
             </div>

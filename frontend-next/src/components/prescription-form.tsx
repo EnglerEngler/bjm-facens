@@ -106,7 +106,7 @@ export function PrescriptionForm({ defaultPatientId, aiDraft, aiDraftLoading, ai
   return (
     <form className="card" onSubmit={submit}>
       <h3>Nova Prescrição</h3>
-      {aiDraftLoading && <p className="muted">Gerando sugestao inicial com IA...</p>}
+      {aiDraftLoading && <p className="muted">Gerando sugestão inicial com IA...</p>}
 
       {aiDraft && (
         <section className="card">
@@ -117,7 +117,7 @@ export function PrescriptionForm({ defaultPatientId, aiDraft, aiDraftLoading, ai
 
       {aiDraftError && (
         <section className={`form-inline-alert ${aiDraft ? "info" : "error"}`}>
-          <strong>Rascunho assistido indisponivel</strong>
+          <strong>Rascunho assistido indisponível</strong>
           <span>{aiDraftError}</span>
           {!aiDraft && defaultPatientId && aiDraftError.toLowerCase().includes("anamnese") && (
             <Link href={`/doctor/patients/${defaultPatientId}/anamnesis`} className="doctor-inline-link">
@@ -208,11 +208,11 @@ export function PrescriptionForm({ defaultPatientId, aiDraft, aiDraftLoading, ai
         <div className="confirm-save-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-save-title">
           <div className="confirm-save-card">
             <h4 id="confirm-save-title">Confirmar antes de salvar</h4>
-            <p className="muted">Revise a prescricao. Depois de salvar, a analise clinica sera executada.</p>
+            <p className="muted">Revise a prescrição. Depois de salvar, a análise clínica será executada.</p>
             <ul className="confirm-save-list">
               <li>Paciente: {pendingSubmission.patientId}</li>
               <li>Itens: {pendingSubmission.items.length}</li>
-              <li>Primeiro medicamento: {pendingSubmission.items[0]?.medication || "Nao informado"}</li>
+              <li>Primeiro medicamento: {pendingSubmission.items[0]?.medication || "Não informado"}</li>
             </ul>
             <div className="row">
               <button type="button" onClick={() => setPendingSubmission(null)} disabled={loading}>

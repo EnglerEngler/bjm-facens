@@ -32,7 +32,7 @@ const createClinicUserSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["birthDate"],
-        message: "Nascimento e obrigatorio para paciente.",
+        message: "Nascimento é obrigatório para paciente.",
       });
     }
 
@@ -40,7 +40,7 @@ const createClinicUserSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["cpf"],
-        message: "CPF e obrigatorio para paciente.",
+        message: "CPF é obrigatório para paciente.",
       });
     }
   });
@@ -91,13 +91,13 @@ const serializeBirthDate = (value: unknown) => {
 
 const resolveScopedClinicId = (req: Request, requestedClinicId?: string) => {
   const auth = req.auth;
-  if (!auth) throw new HttpError("Nao autenticado.", 401);
+  if (!auth) throw new HttpError("Não autenticado.", 401);
   if (auth.role === "admin") {
     if (requestedClinicId) return requestedClinicId;
     if (auth.clinicId) return auth.clinicId;
-    throw new HttpError("ClinicId obrigatorio para este contexto.", 422);
+    throw new HttpError("ClinicId obrigatório para este contexto.", 422);
   }
-  if (!auth.clinicId) throw new HttpError("Usuario sem clinica vinculada.", 403);
+  if (!auth.clinicId) throw new HttpError("Usuário sem clínica vinculada.", 403);
   return auth.clinicId;
 };
 
@@ -150,7 +150,7 @@ adminRoutes.get("/dashboard", async (req, res, next) => {
     const clinicId = req.auth?.clinicId;
 
     if (!isGlobalAdmin && !clinicId) {
-      throw new HttpError("Usuario sem clinica vinculada.", 403);
+      throw new HttpError("Usuário sem clínica vinculada.", 403);
     }
 
     const clinics = await ClinicModel.findAll({
@@ -187,7 +187,7 @@ adminRoutes.get("/dashboard", async (req, res, next) => {
       if (existing) return existing;
       const fallback: DashboardClinic = {
         clinicId: id,
-        clinicName: `Clinica ${id}`,
+        clinicName: `Clínica ${id}`,
         joinCode: "-",
         doctors: [],
         patients: [],
@@ -239,12 +239,12 @@ adminRoutes.post("/users", async (req, res, next) => {
     const clinicId = resolveScopedClinicId(req, req.body?.clinicId);
 
     const clinic = await ClinicModel.findByPk(clinicId);
-    if (!clinic) throw new HttpError("Clinica nao encontrada.", 404);
+    if (!clinic) throw new HttpError("Clínica não encontrada.", 404);
 
     const existing = await UserModel.findOne({
       where: { email: payload.email.toLowerCase() },
     });
-    if (existing) throw new HttpError("E-mail ja cadastrado.", 409);
+    if (existing) throw new HttpError("E-mail já cadastrado.", 409);
 
     const passwordHash = await bcrypt.hash(payload.password, 10);
 
@@ -322,16 +322,16 @@ adminRoutes.get("/users/:userId", async (req, res, next) => {
     const user = await UserModel.findOne({
       where: { id: req.params.userId, clinicId },
     });
-    if (!user) throw new HttpError("Usuario nao encontrado nesta clinica.", 404);
+    if (!user) throw new HttpError("Usuário não encontrado nesta clínica.", 404);
     if (user.role !== "doctor" && user.role !== "patient") {
-      throw new HttpError("Somente medico e paciente podem ser consultados nesta tela.", 403);
+      throw new HttpError("Somente médico e paciente podem ser consultados nesta tela.", 403);
     }
 
     const patient = user.role === "patient" ? await PatientModel.findOne({ where: { userId: user.id, clinicId } }) : null;
-    if (user.role === "patient" && !patient) throw new HttpError("Perfil de paciente nao encontrado.", 404);
+    if (user.role === "patient" && !patient) throw new HttpError("Perfil de paciente não encontrado.", 404);
 
     const doctor = user.role === "doctor" ? await DoctorModel.findOne({ where: { userId: user.id, clinicId } }) : null;
-    if (user.role === "doctor" && !doctor) throw new HttpError("Perfil de medico nao encontrado.", 404);
+    if (user.role === "doctor" && !doctor) throw new HttpError("Perfil de médico não encontrado.", 404);
 
     res.json(serializeManagedUser(user, doctor, patient));
   } catch (error) {
@@ -347,26 +347,26 @@ adminRoutes.patch("/users/:userId", async (req, res, next) => {
     const user = await UserModel.findOne({
       where: { id: req.params.userId, clinicId },
     });
-    if (!user) throw new HttpError("Usuario nao encontrado nesta clinica.", 404);
+    if (!user) throw new HttpError("Usuário não encontrado nesta clínica.", 404);
     if (user.role !== "doctor" && user.role !== "patient") {
-      throw new HttpError("Somente medico e paciente podem ser editados nesta tela.", 403);
+      throw new HttpError("Somente médico e paciente podem ser editados nesta tela.", 403);
     }
 
     if (payload.email && payload.email.toLowerCase() !== user.email) {
       const existing = await UserModel.findOne({ where: { email: payload.email.toLowerCase() } });
-      if (existing) throw new HttpError("E-mail ja cadastrado.", 409);
+      if (existing) throw new HttpError("E-mail já cadastrado.", 409);
     }
 
     let patient: PatientModel | null = null;
     if (user.role === "patient") {
       patient = await PatientModel.findOne({ where: { userId: user.id, clinicId } });
-      if (!patient) throw new HttpError("Perfil de paciente nao encontrado.", 404);
+      if (!patient) throw new HttpError("Perfil de paciente não encontrado.", 404);
     }
     const doctor = user.role === "doctor" ? await DoctorModel.findOne({ where: { userId: user.id, clinicId } }) : null;
-    if (user.role === "doctor" && !doctor) throw new HttpError("Perfil de medico nao encontrado.", 404);
+    if (user.role === "doctor" && !doctor) throw new HttpError("Perfil de médico não encontrado.", 404);
 
     if (user.role === "doctor" && payload.birthDate !== undefined) {
-      throw new HttpError("Nascimento so pode ser alterado para pacientes.", 422);
+      throw new HttpError("Nascimento só pode ser alterado para pacientes.", 422);
     }
     if (
       user.role === "doctor" &&
@@ -383,7 +383,7 @@ adminRoutes.patch("/users/:userId", async (req, res, next) => {
         payload.emergencyContactName !== undefined ||
         payload.emergencyContactPhone !== undefined)
     ) {
-      throw new HttpError("Campos de perfil detalhado so podem ser alterados para pacientes.", 422);
+      throw new HttpError("Campos de perfil detalhado só podem ser alterados para pacientes.", 422);
     }
 
     await sequelize.transaction(async (transaction) => {

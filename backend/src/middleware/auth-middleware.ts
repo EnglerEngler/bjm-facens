@@ -25,14 +25,14 @@ export const authMiddleware = async (req: Request, _res: Response, next: NextFun
     req.auth = { userId: decoded.sub, role: decoded.role, clinicId };
     return next();
   } catch {
-    return next(new HttpError("Token invalido ou expirado.", 401));
+    return next(new HttpError("Token inválido ou expirado.", 401));
   }
 };
 
 export const requireRole =
   (...roles: UserRole[]) =>
   (req: Request, _res: Response, next: NextFunction) => {
-    if (!req.auth) return next(new HttpError("Nao autenticado.", 401));
+    if (!req.auth) return next(new HttpError("Não autenticado.", 401));
     if (!roles.includes(req.auth.role)) return next(new HttpError("Acesso negado para este perfil.", 403));
     return next();
   };

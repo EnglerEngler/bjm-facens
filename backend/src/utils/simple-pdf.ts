@@ -139,12 +139,12 @@ const readEmbeddedLogo = (): EmbeddedPngImage => {
 
   const logoPath = resolveLogoPath();
   if (!logoPath) {
-    throw new Error("Logo PNG nao encontrada para geracao do PDF.");
+    throw new Error("Logo PNG não encontrada para geração do PDF.");
   }
 
   const buffer = fs.readFileSync(logoPath);
   if (!buffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
-    throw new Error("Logo PNG invalida.");
+    throw new Error("Logo PNG inválida.");
   }
 
   let offset = 8;
@@ -257,7 +257,7 @@ export const createSimplePdfBuffer = (payload: PrescriptionPdfPayload): Buffer =
     if (logo) {
       commands.push(image(PAGE_LEFT, PAGE_HEIGHT - 88, 112, 52, "Im1"));
     }
-    commands.push(text(PAGE_LEFT + (logo ? 128 : 0), PAGE_HEIGHT - 66, "Prescricao", { font: "F2", size: 20, color: rgb(TEXT) }));
+    commands.push(text(PAGE_LEFT + (logo ? 128 : 0), PAGE_HEIGHT - 66, "Prescrição", { font: "F2", size: 20, color: rgb(TEXT) }));
     commands.push(
       text(PAGE_LEFT + (logo ? 128 : 0), PAGE_HEIGHT - 86, "Documento liberado para consulta do paciente", {
         size: 10,
@@ -361,7 +361,7 @@ export const createSimplePdfBuffer = (payload: PrescriptionPdfPayload): Buffer =
   drawSectionTitle("Medicamentos");
 
   if (payload.items.length === 0) {
-    drawParagraphCard("Sem itens registrados", "Nao ha medicamentos vinculados a esta prescricao.");
+    drawParagraphCard("Sem itens registrados", "Não há medicamentos vinculados a esta prescrição.");
   } else {
     payload.items.forEach((item, index) => drawMedicationCard(item, index));
   }

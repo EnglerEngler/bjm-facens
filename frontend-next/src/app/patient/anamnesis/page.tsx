@@ -35,7 +35,7 @@ const calculateBodyMassIndex = (heightValue: string, weightValue: string) => {
 };
 
 const formatBiologicalSex = (value?: string | null) => {
-  if (!value) return "Nao informado";
+  if (!value) return "Não informado";
   return value.charAt(0).toUpperCase() + value.slice(1);
 };
 
@@ -124,8 +124,8 @@ export default function PatientAnamnesisPage() {
       <section className="doctor-hero patient-anamnesis-hero">
         <div>
           <span className="doctor-kicker">Minha anamnese</span>
-          <h1>Historico de saude do paciente</h1>
-          <p className="muted">Mantenha suas informacoes clinicas organizadas. O medico consulta este registro diretamente no prontuario.</p>
+          <h1>Histórico de saúde do paciente</h1>
+          <p className="muted">Mantenha suas informações clínicas organizadas. O médico consulta este registro diretamente no prontuário.</p>
         </div>
       </section>
 
@@ -138,7 +138,7 @@ export default function PatientAnamnesisPage() {
               <div>
                 <span className="doctor-section-label">Resumo</span>
                 <h2>Visao geral da anamnese</h2>
-                <p className="muted">Um unico cadastro editavel, organizado por blocos clinicos.</p>
+                <p className="muted">Um único cadastro editável, organizado por blocos clínicos.</p>
               </div>
             </div>
 
@@ -151,13 +151,13 @@ export default function PatientAnamnesisPage() {
                 <small>{progressPercentage}% do roteiro preenchido</small>
               </article>
               <article className="doctor-fact-card">
-                <span className="doctor-fact-label">Sexo biologico</span>
+                <span className="doctor-fact-label">Sexo biológico</span>
                 <strong>{formatBiologicalSex(patientProfile?.biologicalSex)}</strong>
                 <small>Vem do perfil do paciente</small>
               </article>
               <article className="doctor-fact-card">
-                <span className="doctor-fact-label">Ultima atualizacao</span>
-                <strong>{lastSavedAt ? new Date(lastSavedAt).toLocaleString() : "Ainda nao salva"}</strong>
+                <span className="doctor-fact-label">Última atualização</span>
+                <strong>{lastSavedAt ? new Date(lastSavedAt).toLocaleString() : "Ainda não salva"}</strong>
                 <small>Confirmacao do ultimo salvamento</small>
               </article>
               <article className="doctor-fact-card">

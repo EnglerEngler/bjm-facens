@@ -92,20 +92,20 @@ const buildContextPrompt = (context: ClinicalContext) => {
   return [
     `Paciente: ${context.patient.name || context.patient.id}`,
     `Identificador: ${context.patient.id}`,
-    `Nascimento: ${context.patient.birthDate || "nao informado"}`,
-    `Sexo biologico: ${context.patient.biologicalSex || "nao informado"}`,
-    `Condicoes registradas: ${context.record.conditions.join(", ") || "nenhuma"}`,
+    `Nascimento: ${context.patient.birthDate || "não informado"}`,
+    `Sexo biológico: ${context.patient.biologicalSex || "não informado"}`,
+    `Condições registradas: ${context.record.conditions.join(", ") || "nenhuma"}`,
     `Alergias registradas: ${context.record.allergies.join(", ") || "nenhuma"}`,
-    `Medicacoes em uso: ${context.record.currentMedications.join(", ") || "nenhuma"}`,
-    `Ultima atualizacao do prontuario: ${context.record.lastUpdatedAt || "nao informado"}`,
-    `Anamnese preenchida: ${context.anamnesis ? "sim" : "nao"}`,
+    `Medicações em uso: ${context.record.currentMedications.join(", ") || "nenhuma"}`,
+    `Última atualização do prontuário: ${context.record.lastUpdatedAt || "não informado"}`,
+    `Anamnese preenchida: ${context.anamnesis ? "sim" : "não"}`,
     anamnesisLines.length > 0 ? `Principais respostas da anamnese:\n- ${anamnesisLines.join("\n- ")}` : "Sem respostas de anamnese.",
   ].join("\n");
 };
 
 const requestGroqJson = async <T>(prompt: string): Promise<T> => {
   if (!env.groqApiKey) {
-    throw new HttpError("GROQ_API_KEY nao configurada no backend.", 503);
+    throw new HttpError("GROQ_API_KEY não configurada no backend.", 503);
   }
 
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -122,7 +122,7 @@ const requestGroqJson = async <T>(prompt: string): Promise<T> => {
         {
           role: "system",
           content:
-            "Voce e um assistente clinico para apoio a medico. Responda somente JSON valido, sem markdown. Seja conciso, use portugues do Brasil e nao invente dados ausentes.",
+            "Você é um assistente clínico para apoio a médico. Responda somente JSON válido, sem markdown. Seja conciso, use português do Brasil e não invente dados ausentes.",
         },
         {
           role: "user",
@@ -148,12 +148,12 @@ const requestGroqJson = async <T>(prompt: string): Promise<T> => {
 
   const text = payload.choices?.[0]?.message?.content?.trim();
   if (!text) {
-    throw new HttpError("Groq nao retornou texto utilizavel.", 503);
+    throw new HttpError("Groq não retornou texto utilizável.", 503);
   }
 
   const parsed = parseJsonPayload<T>(text) ?? parseJsonPayload<T>(extractJsonObject(text));
   if (!parsed) {
-    throw new HttpError(`Groq retornou JSON invalido: ${text.slice(0, 400)}`, 503);
+    throw new HttpError(`Groq retornou JSON inválido: ${text.slice(0, 400)}`, 503);
   }
 
   return parsed;
@@ -161,7 +161,7 @@ const requestGroqJson = async <T>(prompt: string): Promise<T> => {
 
 export const loadClinicalContext = async (patientId: string): Promise<ClinicalContext> => {
   const patient = await PatientModel.findByPk(patientId);
-  if (!patient) throw new HttpError("Paciente nao encontrado.", 404);
+  if (!patient) throw new HttpError("Paciente não encontrado.", 404);
 
   const [user, record, anamnesis] = await Promise.all([
     UserModel.findByPk(patient.userId),
@@ -199,17 +199,17 @@ export const generateAssessmentSummary = async (
   items: SuggestedPrescriptionItem[],
 ): Promise<AssessmentSummary> => {
   const prompt = [
-    "Gere um resumo clinico estruturado para revisao medica a partir do contexto abaixo.",
+    "Gere um resumo clínico estruturado para revisão médica a partir do contexto abaixo.",
     "Responda apenas em JSON com o formato:",
     '{"summary":"string","highlights":["string"],"limitations":["string"]}',
     "Regras:",
-    "- maximo 2 highlights",
-    "- maximo 2 limitations",
-    "- nao use markdown",
-    "- nao afirmar diagnostico definitivo",
+    "- máximo 2 highlights",
+    "- máximo 2 limitations",
+    "- não use markdown",
+    "- não afirmar diagnóstico definitivo",
     "- considerar os medicamentos sugeridos/prescritos no contexto",
     buildContextPrompt(context),
-    `Itens da prescricao: ${items.length ? JSON.stringify(items) : "nenhum item informado"}`,
+    `Itens da prescrição: ${items.length ? JSON.stringify(items) : "nenhum item informado"}`,
   ].join("\n\n");
 
   const parsed = await requestGroqJson<{
@@ -225,7 +225,7 @@ export const generateAssessmentSummary = async (
     : [];
 
   if (!summary || highlights.length === 0 || limitations.length === 0) {
-    throw new HttpError("Groq respondeu, mas o resumo clinico veio incompleto.", 503);
+    throw new HttpError("Groq respondeu, mas o resumo clínico veio incompleto.", 503);
   }
 
   return {
@@ -241,21 +241,21 @@ export const generatePrescriptionDraft = async (patientId: string): Promise<Sugg
   const hasAnamnesisAnswers = Object.values(context.anamnesis?.answers ?? {}).some((value) => value.trim());
 
   if (!context.anamnesis || !hasAnamnesisAnswers) {
-    throw new HttpError("Paciente ainda nao possui anamnese preenchida. Preencha a anamnese para gerar sugestao com IA.", 422);
+    throw new HttpError("Paciente ainda não possui anamnese preenchida. Preencha a anamnese para gerar sugestão com IA.", 422);
   }
 
   const prompt = [
-    "Voce vai sugerir um rascunho inicial de prescricao para um medico.",
+    "Você vai sugerir um rascunho inicial de prescrição para um médico.",
     "Responda apenas em JSON com o formato:",
     '{"summary":"string","conduct":"string","items":[{"medication":"string","dose":"string","frequency":"string","duration":"string","route":"string"}]}',
     "Regras:",
-    "- maximo 3 medicamentos",
+    "- máximo 3 medicamentos",
     "- escreva a conduta de forma objetiva e prescritiva",
-    "- nao repetir medicacoes ja registradas em uso sem justificativa implicita",
-    "- nao sugerir medicamentos que coincidam com alergias registradas",
-    "- route deve ser algo como oral, topica, intramuscular",
-    "- nao use markdown",
-    "- nao escreva avisos para revisar manualmente; entregue a melhor proposta clinica inicial com base nos dados fornecidos",
+    "- não repetir medicações já registradas em uso sem justificativa implícita",
+    "- não sugerir medicamentos que coincidam com alergias registradas",
+    "- route deve ser algo como oral, tópica, intramuscular",
+    "- não use markdown",
+    "- não escreva avisos para revisar manualmente; entregue a melhor proposta clínica inicial com base nos dados fornecidos",
     buildContextPrompt(context),
   ].join("\n\n");
 
@@ -270,7 +270,7 @@ export const generatePrescriptionDraft = async (patientId: string): Promise<Sugg
   const items = Array.isArray(parsed?.items) ? parsed!.items.map(normalizeItem).filter(Boolean) as SuggestedPrescriptionItem[] : [];
 
   if (!summary || !conduct || items.length === 0) {
-    throw new HttpError("Groq respondeu, mas o rascunho da prescricao veio incompleto.", 503);
+    throw new HttpError("Groq respondeu, mas o rascunho da prescrição veio incompleto.", 503);
   }
 
   return {

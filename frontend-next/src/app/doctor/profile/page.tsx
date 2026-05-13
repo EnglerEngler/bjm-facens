@@ -8,7 +8,7 @@ export default function DoctorProfilePage() {
   return (
     <AccountProfilePage
       role="doctor"
-      title="Perfil do medico"
+      title="Perfil do médico"
       description="Edite os dados da sua conta e mantenha seu acesso profissional atualizado."
     />
   );

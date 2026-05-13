@@ -34,7 +34,7 @@ export default function DoctorPatientAnamnesisPage() {
         setPayload(data);
       } catch (err) {
         if (err instanceof ApiError && err.status === 404) {
-          setError("Anamnese ainda nao preenchida.");
+          setError("Anamnese ainda não preenchida.");
         } else {
           setError(err instanceof Error ? err.message : "Falha ao carregar anamnese.");
         }
@@ -55,14 +55,14 @@ export default function DoctorPatientAnamnesisPage() {
         <section className="doctor-empty-state doctor-empty-state-warning">
           <div>
             <strong>{error}</strong>
-            <p>Quando o paciente concluir o questionario, as respostas passam a aparecer aqui e a IA volta a poder sugerir o rascunho inicial.</p>
+            <p>Quando o paciente concluir o questionário, as respostas passam a aparecer aqui e a IA volta a poder sugerir o rascunho inicial.</p>
           </div>
           <div className="doctor-empty-state-actions">
             <Link href={`/doctor/patients/${patientId}`} className="doctor-action-button doctor-action-button-secondary">
               Voltar para ficha
             </Link>
             <Link href={`/doctor/prescriptions/new?patientId=${patientId}`} className="doctor-action-button doctor-action-button-primary">
-              Criar prescricao manual
+              Criar prescrição manual
             </Link>
           </div>
         </section>

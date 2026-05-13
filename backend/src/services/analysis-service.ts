@@ -32,13 +32,13 @@ const interactionPairs: Array<{
     a: "sildenafil",
     b: "nitrato",
     severity: "critical",
-    message: "Interacao grave entre sildenafil e nitrato (risco de hipotensao severa).",
+    message: "Interação grave entre sildenafil e nitrato (risco de hipotensão severa).",
   },
   {
     a: "varfarina",
     b: "diclofenaco",
     severity: "high",
-    message: "Interacao relevante entre varfarina e diclofenaco (risco de sangramento).",
+    message: "Interação relevante entre varfarina e diclofenaco (risco de sangramento).",
   },
 ];
 
@@ -49,10 +49,10 @@ const conditionMedicationRules: Array<{
   message: string;
 }> = [
   {
-    condition: "hipertensao",
+    condition: "hipertensão",
     medication: "pseudoefedrina",
     severity: "high",
-    message: "Pseudoefedrina pode agravar hipertensao nao controlada.",
+    message: "Pseudoefedrina pode agravar hipertensão não controlada.",
   },
   {
     condition: "diabetes",
@@ -121,9 +121,9 @@ const ensureAIAssessment = async (params: {
 
 export const runClinicalAnalysis = async (prescriptionId: string) => {
   const prescription = await PrescriptionModel.findByPk(prescriptionId);
-  if (!prescription) throw new HttpError("Prescricao nao encontrada.", 404);
+  if (!prescription) throw new HttpError("Prescrição não encontrada.", 404);
   if (prescription.status === "cancelled") {
-    throw new HttpError("Nao e possivel analisar prescricao cancelada.", 409);
+    throw new HttpError("Não é possível analisar prescrição cancelada.", 409);
   }
 
   const [recordModel, itemModels] = await Promise.all([
@@ -131,7 +131,7 @@ export const runClinicalAnalysis = async (prescriptionId: string) => {
     PrescriptionItemModel.findAll({ where: { prescriptionId: prescription.id } }),
   ]);
 
-  if (itemModels.length === 0) throw new HttpError("Prescricao sem itens para analise.", 422);
+  if (itemModels.length === 0) throw new HttpError("Prescrição sem itens para análise.", 422);
 
   const record = {
     allergies: recordModel?.allergies ?? [],
@@ -170,7 +170,7 @@ export const runClinicalAnalysis = async (prescriptionId: string) => {
         patientId: prescription.patientId,
         ruleCode: "THERAPEUTIC_DUPLICITY",
         severity: "high",
-        message: `Possivel duplicidade terapeutica: ${item.medication} ja em uso.`,
+        message: `Possível duplicidade terapêutica: ${item.medication} já em uso.`,
         evidence: [`currentMedication:${item.medication}`],
       });
       highestSeverity = pickMostSevere(highestSeverity, "high");
@@ -183,7 +183,7 @@ export const runClinicalAnalysis = async (prescriptionId: string) => {
         patientId: prescription.patientId,
         ruleCode: "PRESCRIPTION_DUPLICITY",
         severity: "medium",
-        message: `Medicamento repetido na mesma prescricao: ${item.medication}.`,
+        message: `Medicamento repetido na mesma prescrição: ${item.medication}.`,
         evidence: [`prescriptionDuplicate:${item.medication}`],
       });
       highestSeverity = pickMostSevere(highestSeverity, "medium");
@@ -253,7 +253,7 @@ export const runClinicalAnalysis = async (prescriptionId: string) => {
 
 export const getAnamnesisByPrescription = async (prescriptionId: string) => {
   const prescription = await PrescriptionModel.findByPk(prescriptionId);
-  if (!prescription) throw new HttpError("Prescricao nao encontrada.", 404);
+  if (!prescription) throw new HttpError("Prescrição não encontrada.", 404);
 
   const existing = await AIAssessmentModel.findOne({ where: { prescriptionId } });
   if (existing) return existing;

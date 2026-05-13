@@ -6,6 +6,7 @@ import { UniqueConstraintError } from "sequelize";
 import { env } from "../config/env.js";
 import {
   AdminModel,
+  AuditLogModel,
   ClinicAdminModel,
   ClinicModel,
   DoctorModel,
@@ -19,14 +20,36 @@ import type { User, UserRole } from "../domain/types.js";
 import { createId } from "../utils/id.js";
 import { HttpError } from "../utils/http-error.js";
 
+export const LGPD_ACCEPTED_ACTION = "user.lgpd.accept";
+
+export const getLgpdAcceptance = async (userId: string) => {
+  const acceptedLog = await AuditLogModel.findOne({
+    where: {
+      actorUserId: userId,
+      action: LGPD_ACCEPTED_ACTION,
+    },
+    order: [["createdAt", "ASC"]],
+  });
+
+  return {
+    lgpdAccepted: Boolean(acceptedLog),
+    lgpdAcceptedAt: acceptedLog?.createdAt.toISOString() ?? null,
+  };
+};
+
 const sanitizeUser = (
-  user: Pick<User, "id" | "name" | "email" | "role" | "clinicId" | "createdAt" | "onboardingCompleted" | "onboardingCompletedAt">,
+  user: Pick<User, "id" | "name" | "email" | "role" | "clinicId" | "createdAt" | "onboardingCompleted" | "onboardingCompletedAt"> & {
+    lgpdAccepted: boolean;
+    lgpdAcceptedAt: string | null;
+  },
 ) => ({
   id: user.id,
   name: user.name,
   email: user.email,
   role: user.role,
   clinicId: user.clinicId,
+  lgpdAccepted: user.lgpdAccepted,
+  lgpdAcceptedAt: user.lgpdAcceptedAt,
   onboardingCompleted: user.onboardingCompleted,
   onboardingCompletedAt: user.onboardingCompletedAt,
   createdAt: user.createdAt,
@@ -46,33 +69,33 @@ export const registerUser = async (payload: {
 
   if (payload.role === "doctor" || payload.role === "patient") {
     if (!payload.clinicJoinCode) {
-      throw new HttpError("Cadastro de medico e paciente exige codigo da clinica.", 422);
+      throw new HttpError("Cadastro de médico e paciente exige código da clínica.", 422);
     }
 
     const clinic = await ClinicModel.findOne({
       where: { joinCode: payload.clinicJoinCode.trim() },
     });
-    if (!clinic) throw new HttpError("Codigo da clinica invalido.", 422);
+    if (!clinic) throw new HttpError("Código da clínica inválido.", 422);
     clinicId = clinic.id;
   }
 
   if (payload.role === "clinic_admin") {
-    if (!payload.clinicName) throw new HttpError("Cadastro de admin da clinica exige nome da clinica.", 422);
+    if (!payload.clinicName) throw new HttpError("Cadastro de admin da clínica exige nome da clínica.", 422);
 
     const normalizedName = payload.clinicName.trim();
     if (normalizedName.length < 3) {
-      throw new HttpError("Nome da clinica deve ter ao menos 3 caracteres.", 422);
+      throw new HttpError("Nome da clínica deve ter ao menos 3 caracteres.", 422);
     }
 
     const existingClinic = await ClinicModel.findOne({ where: { name: normalizedName } });
-    if (existingClinic) throw new HttpError("Ja existe clinica com este nome.", 409);
+    if (existingClinic) throw new HttpError("Já existe clínica com este nome.", 409);
     createdClinicName = normalizedName;
   }
 
   const existing = await UserModel.findOne({
     where: { email: payload.email.toLowerCase() },
   });
-  if (existing) throw new HttpError("E-mail ja cadastrado.", 409);
+  if (existing) throw new HttpError("E-mail já cadastrado.", 409);
 
   const passwordHash = await bcrypt.hash(payload.password, 10);
   let user;
@@ -157,17 +180,20 @@ export const registerUser = async (payload: {
       payload.role === "clinic_admin" &&
       error.errors.some((item) => item.path === "name")
     ) {
-      throw new HttpError("Ja existe clinica com este nome.", 409);
+      throw new HttpError("Já existe clínica com este nome.", 409);
     }
     throw error;
   }
 
+  const lgpdAcceptance = await getLgpdAcceptance(user.id);
   const userOutput = sanitizeUser({
     id: user.id,
     name: user.name,
     email: user.email,
     role: user.role,
     clinicId: user.clinicId ?? undefined,
+    lgpdAccepted: lgpdAcceptance.lgpdAccepted,
+    lgpdAcceptedAt: lgpdAcceptance.lgpdAcceptedAt,
     onboardingCompleted: user.onboardingCompleted,
     onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
     createdAt: user.createdAt.toISOString(),
@@ -182,7 +208,7 @@ export const loginUser = async (payload: { email: string; password: string }) =>
   const user = await UserModel.findOne({
     where: { email: payload.email.toLowerCase() },
   });
-  if (!user) throw new HttpError("E-mail nao cadastrado.", 401);
+  if (!user) throw new HttpError("E-mail não cadastrado.", 401);
 
   const isValid = await bcrypt.compare(payload.password, user.passwordHash);
   if (!isValid) throw new HttpError("Senha incorreta.", 401);
@@ -201,6 +227,7 @@ export const loginUser = async (payload: { email: string; password: string }) =>
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
 
+  const lgpdAcceptance = await getLgpdAcceptance(user.id);
   return {
     token,
     refreshToken,
@@ -210,6 +237,8 @@ export const loginUser = async (payload: { email: string; password: string }) =>
       email: user.email,
       role: user.role,
       clinicId: user.clinicId ?? undefined,
+      lgpdAccepted: lgpdAcceptance.lgpdAccepted,
+      lgpdAcceptedAt: lgpdAcceptance.lgpdAcceptedAt,
       onboardingCompleted: user.onboardingCompleted,
       onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
       createdAt: user.createdAt.toISOString(),
@@ -224,10 +253,10 @@ export const refreshAuthToken = async (refreshToken: string) => {
   const session = await RefreshSessionModel.findOne({
     where: { token: refreshToken, revokedAt: null },
   });
-  if (!session) throw new HttpError("Refresh token invalido.", 401);
+  if (!session) throw new HttpError("Refresh token inválido.", 401);
 
   const decoded = jwt.verify(refreshToken, env.refreshSecret) as { sub: string; role: UserRole; clinicId?: string };
-  if (decoded.sub !== session.userId) throw new HttpError("Refresh token invalido.", 401);
+  if (decoded.sub !== session.userId) throw new HttpError("Refresh token inválido.", 401);
 
   const accessToken = jwt.sign({ sub: decoded.sub, role: decoded.role, clinicId: decoded.clinicId }, env.jwtSecret, {
     expiresIn: env.jwtExpiresIn as SignOptions["expiresIn"],
@@ -264,15 +293,15 @@ export const resetPassword = async (payload: { token: string; newPassword: strin
   const resetRecord = await PasswordResetTokenModel.findOne({
     where: { token: payload.token, usedAt: null },
   });
-  if (!resetRecord) throw new HttpError("Token de recuperacao invalido.", 401);
+  if (!resetRecord) throw new HttpError("Token de recuperação inválido.", 401);
 
   const decoded = jwt.verify(payload.token, env.refreshSecret) as { sub: string };
-  if (decoded.sub !== resetRecord.userId) throw new HttpError("Token de recuperacao invalido.", 401);
+  if (decoded.sub !== resetRecord.userId) throw new HttpError("Token de recuperação inválido.", 401);
 
   const user = await UserModel.findOne({
     where: { id: resetRecord.userId },
   });
-  if (!user) throw new HttpError("Usuario nao encontrado.", 404);
+  if (!user) throw new HttpError("Usuário não encontrado.", 404);
 
   user.passwordHash = await bcrypt.hash(payload.newPassword, 10);
   resetRecord.usedAt = new Date();

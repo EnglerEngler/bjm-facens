@@ -10,6 +10,8 @@ export interface User {
   passwordHash: string;
   role: UserRole;
   clinicId?: string;
+  lgpdAccepted: boolean;
+  lgpdAcceptedAt?: string | null;
   onboardingCompleted: boolean;
   onboardingCompletedAt?: string | null;
   createdAt: string;

@@ -15,8 +15,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const isOverlayRoute = pathname === "/login" || pathname === "/como-funciona";
-  const hideGuestHeaderLoginLink = pathname === "/login" || pathname === "/como-funciona";
+  const isOverlayRoute = pathname === "/login" || pathname === "/como-funciona" || pathname === "/lgpd";
+  const hideGuestHeaderLoginLink = pathname === "/login" || pathname === "/como-funciona" || pathname === "/lgpd";
   const canAccessDoctorDashboard = session?.user.role === "doctor";
   const canAccessPatientDashboard = session?.user.role === "patient";
   const canAccessAdminArea = session?.user.role === "admin";
@@ -38,11 +38,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const userName = session?.user.name?.trim() || "";
   const userRoleLabel =
     session?.user.role === "doctor"
-      ? "Medico"
+      ? "Médico"
       : session?.user.role === "patient"
         ? "Paciente"
         : session?.user.role === "clinic_admin"
-          ? "Admin da Clinica"
+          ? "Admin da Clínica"
           : session?.user.role === "admin"
             ? "Administrador"
             : "";
@@ -127,7 +127,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       </span>
                     </Link>
                   ) : (
-                    <div className="user-chip" aria-label={`Usuario: ${userName}`}>
+                    <div className="user-chip" aria-label={`Usuário: ${userName}`}>
                       <span className="user-avatar">{userInitials || "U"}</span>
                       <span className="user-info">
                         <strong>{userName}</strong>

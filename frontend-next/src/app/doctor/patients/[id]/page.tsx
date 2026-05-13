@@ -22,14 +22,14 @@ interface PatientAnamnesisPayload {
 }
 
 const formatDate = (value?: string | null) => {
-  if (!value) return "Nao informado";
+  if (!value) return "Não informado";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("pt-BR");
 };
 
 const formatDateTime = (value?: string | null) => {
-  if (!value) return "Nao informado";
+  if (!value) return "Não informado";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("pt-BR");
@@ -82,14 +82,14 @@ export default function DoctorPatientRecordPage() {
         } catch (err) {
           if (err instanceof ApiError && err.status === 404) {
             setAnamnesisPayload(null);
-            setAnamnesisError("Anamnese ainda nao preenchida.");
+            setAnamnesisError("Anamnese ainda não preenchida.");
           } else {
             setAnamnesisPayload(null);
             setAnamnesisError(err instanceof Error ? err.message : "Falha ao carregar anamnese.");
           }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Falha ao abrir prontuario.");
+        setError(err instanceof Error ? err.message : "Falha ao abrir prontuário.");
       } finally {
         setLoading(false);
       }
@@ -153,21 +153,21 @@ export default function DoctorPatientRecordPage() {
     <main className="doctor-dashboard">
       <section className="doctor-hero">
         <div>
-          <span className="doctor-kicker">Revisao do paciente</span>
+          <span className="doctor-kicker">Revisão do paciente</span>
           <h1>{patientDisplayName}</h1>
-          <p className="muted">Revise o contexto clinico e a anamnese antes de gerar uma nova prescricao.</p>
+          <p className="muted">Revise o contexto clínico e a anamnese antes de gerar uma nova prescrição.</p>
         </div>
         <div className="doctor-hero-actions">
           <Link href="/doctor/dashboard" className="doctor-action-button doctor-action-button-primary">
             Voltar para busca
           </Link>
           <Link href={`/doctor/prescriptions/new?patientId=${patientId}`} className="doctor-action-button doctor-action-button-primary">
-            Nova prescricao
+            Nova prescrição
           </Link>
         </div>
       </section>
 
-      {loading && <p>Carregando prontuario...</p>}
+      {loading && <p>Carregando prontuário...</p>}
       {error && <p className="error">{error}</p>}
 
       {!loading && !error && payload && (
@@ -177,7 +177,7 @@ export default function DoctorPatientRecordPage() {
               <div>
                 <span className="doctor-section-label">Resumo do paciente</span>
                 <h2>Dados principais</h2>
-                <p className="muted">Base clinica para revisar o contexto antes da conduta e da prescricao.</p>
+                <p className="muted">Base clínica para revisar o contexto antes da conduta e da prescrição.</p>
               </div>
             </div>
 
@@ -185,20 +185,20 @@ export default function DoctorPatientRecordPage() {
               <article className="doctor-fact-card">
                 <span className="doctor-fact-label">Perfil do paciente</span>
                 <strong>{payload.patient.name?.trim() || payload.patient.id}</strong>
-                <small>Usuario {payload.patient.userId}</small>
+                <small>Usuário {payload.patient.userId}</small>
               </article>
               <article className="doctor-fact-card">
                 <span className="doctor-fact-label">Nascimento</span>
                 <strong>{formatDate(payload.patient.birthDate)}</strong>
                 <small>
-                  Clinica {payload.patient.clinicId ?? "Nao informada"}
+                  Clínica {payload.patient.clinicId ?? "Não informada"}
                   {payload.patient.cpf ? ` · CPF ${formatCpf(payload.patient.cpf)}` : ""}
                 </small>
               </article>
               <article className="doctor-fact-card">
-                <span className="doctor-fact-label">Status do prontuario</span>
-                <strong>{payload.record.lastUpdatedAt ? formatDateTime(payload.record.lastUpdatedAt) : "Sem prontuario salvo"}</strong>
-                <small>{hasStructuredRecord ? "Dados clinicos disponiveis" : "Use a anamnese como base para a prescricao"}</small>
+                <span className="doctor-fact-label">Status do prontuário</span>
+                <strong>{payload.record.lastUpdatedAt ? formatDateTime(payload.record.lastUpdatedAt) : "Sem prontuário salvo"}</strong>
+                <small>{hasStructuredRecord ? "Dados clínicos disponíveis" : "Use a anamnese como base para a prescrição"}</small>
               </article>
             </div>
 
@@ -208,7 +208,7 @@ export default function DoctorPatientRecordPage() {
                 <p>{joinValues(payload.record.allergies)}</p>
               </article>
               <article className="doctor-info-panel">
-                <h3>Condicoes</h3>
+                <h3>Condições</h3>
                 <p>{joinValues(payload.record.conditions)}</p>
               </article>
               <article className="doctor-info-panel">
@@ -222,8 +222,8 @@ export default function DoctorPatientRecordPage() {
             <div className="doctor-record-header">
               <div>
                 <span className="doctor-section-label">Anamnese</span>
-                <h2>Resumo clinico preenchido pelo paciente</h2>
-                <p className="muted">As respostas aparecem agrupadas e prontas para consulta rapida.</p>
+                <h2>Resumo clínico preenchido pelo paciente</h2>
+                <p className="muted">As respostas aparecem agrupadas e prontas para consulta rápida.</p>
               </div>
               {anamnesisPayload && (
                 <Link href={`/doctor/patients/${patientId}/anamnesis`} className="doctor-action-button doctor-action-button-primary">
@@ -235,12 +235,12 @@ export default function DoctorPatientRecordPage() {
             {anamnesisError && (
               <section className="doctor-empty-state doctor-empty-state-warning">
                 <div>
-                  <strong>Anamnese ainda nao preenchida</strong>
-                  <p>Sem anamnese, a IA nao consegue gerar o rascunho inicial. A equipe pode seguir com prescricao manual enquanto aguarda o preenchimento.</p>
+                  <strong>Anamnese ainda não preenchida</strong>
+                  <p>Sem anamnese, a IA não consegue gerar o rascunho inicial. A equipe pode seguir com prescrição manual enquanto aguarda o preenchimento.</p>
                 </div>
                 <div className="doctor-empty-state-actions">
                   <Link href={`/doctor/prescriptions/new?patientId=${patientId}`} className="doctor-action-button doctor-action-button-primary">
-                    Criar prescricao manual
+                    Criar prescrição manual
                   </Link>
                   <Link href={`/doctor/patients/${patientId}/anamnesis`} className="doctor-action-button doctor-action-button-secondary">
                     Ver tela da anamnese
@@ -254,11 +254,11 @@ export default function DoctorPatientRecordPage() {
                 <div className="doctor-facts-grid">
                   <article className="doctor-fact-card">
                     <span className="doctor-fact-label">Anamnese</span>
-                    <strong>Registro unico do paciente</strong>
+                    <strong>Registro único do paciente</strong>
                     <small>{answeredCount} resposta(s) preenchida(s)</small>
                   </article>
                   <article className="doctor-fact-card">
-                    <span className="doctor-fact-label">Atualizacao</span>
+                    <span className="doctor-fact-label">Atualização</span>
                     <strong>{formatDateTime(anamnesisPayload.anamnesis.updatedAt)}</strong>
                   </article>
                 </div>
@@ -285,9 +285,9 @@ export default function DoctorPatientRecordPage() {
           <section className="card doctor-record-card">
             <div className="doctor-record-header">
               <div>
-                <span className="doctor-section-label">Prescricoes</span>
-                <h2>Historico de prescricoes</h2>
-                <p className="muted">Consulte as prescricoes ja emitidas para este paciente antes de criar uma nova.</p>
+                <span className="doctor-section-label">Prescrições</span>
+                <h2>Histórico de prescrições</h2>
+                <p className="muted">Consulte as prescrições já emitidas para este paciente antes de criar uma nova.</p>
               </div>
               <div className="doctor-record-header-actions">
                 <span className="doctor-result-chip">
@@ -304,7 +304,7 @@ export default function DoctorPatientRecordPage() {
             </div>
 
             {sortedPrescriptions.length === 0 ? (
-              <p className="muted">Nenhuma prescricao registrada para este paciente.</p>
+              <p className="muted">Nenhuma prescrição registrada para este paciente.</p>
             ) : (
               <div className="doctor-history-list">
                 {sortedPrescriptions.map((prescription) => (
@@ -313,7 +313,7 @@ export default function DoctorPatientRecordPage() {
                     {prescription.conduct && <p>{prescription.conduct}</p>}
                     <div className="doctor-history-actions">
                       <Link href={`/doctor/prescriptions/${prescription.id}`} className="doctor-action-button doctor-action-button-primary">
-                        Ver detalhes da prescricao
+                        Ver detalhes da prescrição
                       </Link>
                     </div>
                   </article>
@@ -325,9 +325,9 @@ export default function DoctorPatientRecordPage() {
           <section className="card doctor-record-card">
             <div className="doctor-record-header">
               <div>
-                <span className="doctor-section-label">Historico</span>
-                <h2>Alteracoes do prontuario</h2>
-                <p className="muted">Ultimos registros de modificacao para auditoria e acompanhamento.</p>
+                <span className="doctor-section-label">Histórico</span>
+                <h2>Alterações do prontuário</h2>
+                <p className="muted">Últimos registros de modificação para auditoria e acompanhamento.</p>
               </div>
               <div className="doctor-record-header-actions">
                 <span className="doctor-result-chip">
@@ -344,7 +344,7 @@ export default function DoctorPatientRecordPage() {
             </div>
 
             {sortedHistory.length === 0 ? (
-              <p className="muted">Sem alteracoes registradas. Se ainda nao houver prontuario estruturado, revise a anamnese e siga para a prescricao.</p>
+              <p className="muted">Sem alterações registradas. Se ainda não houver prontuário estruturado, revise a anamnese e siga para a prescrição.</p>
             ) : (
               <div className="doctor-history-list">
                 {sortedHistory.map((entry) => (

@@ -25,7 +25,7 @@ type CreateUserForm = {
 };
 
 const formatDate = (value?: string | null) => {
-  if (!value) return "Nao informado";
+  if (!value) return "Não informado";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("pt-BR");
@@ -69,7 +69,7 @@ export default function ClinicDashboardPage() {
         ])[0];
         setSelectedUserId(firstUser ?? null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Falha ao carregar dashboard da clinica.");
+        setError(err instanceof Error ? err.message : "Falha ao carregar dashboard da clínica.");
       } finally {
         setLoading(false);
       }
@@ -188,9 +188,9 @@ export default function ClinicDashboardPage() {
       upsertManagedUser(created, clinic?.clinicId);
       setCreateForm(emptyCreateForm);
       setSelectedUserId(created.userId);
-      setFeedback(`${created.role === "doctor" ? "Medico" : "Paciente"} cadastrado com sucesso.`);
+      setFeedback(`${created.role === "doctor" ? "Médico" : "Paciente"} cadastrado com sucesso.`);
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Falha ao cadastrar usuario.");
+      setCreateError(err instanceof Error ? err.message : "Falha ao cadastrar usuário.");
     } finally {
       setCreating(false);
     }
@@ -218,9 +218,9 @@ export default function ClinicDashboardPage() {
 
       upsertManagedUser(updated, selectedUser.clinicId);
       setEditForm((current) => ({ ...current, password: "" }));
-      setFeedback("Usuario atualizado com sucesso.");
+      setFeedback("Usuário atualizado com sucesso.");
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Falha ao atualizar usuario.");
+      setEditError(err instanceof Error ? err.message : "Falha ao atualizar usuário.");
     } finally {
       setSaving(false);
     }
@@ -231,9 +231,9 @@ export default function ClinicDashboardPage() {
 
     try {
       await navigator.clipboard.writeText(clinic.joinCode);
-      pushFlashToast("Codigo de entrada copiado.");
+      pushFlashToast("Código de entrada copiado.");
     } catch {
-      setFeedback("Nao foi possivel copiar o codigo de entrada.");
+      setFeedback("Não foi possível copiar o código de entrada.");
     }
   };
 
@@ -241,16 +241,16 @@ export default function ClinicDashboardPage() {
     <main className="doctor-dashboard clinic-dashboard">
       <section className="doctor-hero clinic-hero">
         <div>
-          <span className="doctor-kicker">Painel da clinica</span>
-          <h1>Gestao de usuarios da sua operacao clinica</h1>
+          <span className="doctor-kicker">Painel da clínica</span>
+          <h1>Gestão de usuários da sua operação clínica</h1>
           <p className="muted">
-            Cadastre novos medicos e pacientes, revise os dados existentes e mantenha o acesso restrito a sua clinica.
+            Cadastre novos médicos e pacientes, revise os dados existentes e mantenha o acesso restrito à sua clínica.
           </p>
         </div>
         <div className="clinic-dashboard-code">
-          <span>Codigo de entrada: {clinic?.joinCode ?? "-"}</span>
+          <span>Código de entrada: {clinic?.joinCode ?? "-"}</span>
           {clinic ? (
-            <button type="button" className="clinic-dashboard-copy-button" onClick={copyClinicJoinCode} aria-label="Copiar codigo de entrada">
+            <button type="button" className="clinic-dashboard-copy-button" onClick={copyClinicJoinCode} aria-label="Copiar código de entrada">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   d="M9 9a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2z"
@@ -284,24 +284,24 @@ export default function ClinicDashboardPage() {
 
         <div className="doctor-facts-grid clinic-summary-grid">
           <article className="doctor-fact-card">
-            <span className="doctor-fact-label">Clinicas visiveis</span>
+            <span className="doctor-fact-label">Clínicas visíveis</span>
             <strong>{totals.clinics}</strong>
-            <small>Escopo atual do admin da clinica</small>
+            <small>Escopo atual do admin da clínica</small>
           </article>
           <article className="doctor-fact-card">
-            <span className="doctor-fact-label">Medicos</span>
+            <span className="doctor-fact-label">Médicos</span>
             <strong>{totals.doctors}</strong>
             <small>Perfis de prescritores cadastrados</small>
           </article>
           <article className="doctor-fact-card">
             <span className="doctor-fact-label">Pacientes</span>
             <strong>{totals.patients}</strong>
-            <small>Usuarios acompanhados pela clinica</small>
+            <small>Usuários acompanhados pela clínica</small>
           </article>
         </div>
 
         <label htmlFor="clinic-dashboard-search" className="sr-only">
-          Buscar usuarios
+          Buscar usuários
         </label>
         <input
           id="clinic-dashboard-search"
@@ -328,16 +328,16 @@ export default function ClinicDashboardPage() {
                 >
                   <span className="doctor-patient-card-top">
                     <strong>{user.name}</strong>
-                    <span>{user.role === "doctor" ? "Medico" : formatDate(user.birthDate)}</span>
+                    <span>{user.role === "doctor" ? "Médico" : formatDate(user.birthDate)}</span>
                   </span>
                   <span className="muted">{user.email}</span>
                   <span className="doctor-patient-card-meta">
-                    {user.role === "doctor" ? "Perfil medico" : `Perfil paciente · CPF ${user.cpf ? formatCpf(user.cpf) : "pendente"}`} · User {user.userId}
+                    {user.role === "doctor" ? "Perfil médico" : `Perfil paciente · CPF ${user.cpf ? formatCpf(user.cpf) : "pendente"}`} · User {user.userId}
                   </span>
                 </button>
               );
             })}
-            {filteredUsers.length === 0 && <p className="muted">Nenhum usuario encontrado para a busca atual.</p>}
+            {filteredUsers.length === 0 && <p className="muted">Nenhum usuário encontrado para a busca atual.</p>}
           </div>
         )}
       </section>
@@ -348,8 +348,8 @@ export default function ClinicDashboardPage() {
             <div className="doctor-record-header">
               <div>
                 <span className="doctor-section-label">Cadastro</span>
-                <h2>Adicionar usuario</h2>
-                <p className="muted">Crie um novo medico ou paciente diretamente na sua clinica.</p>
+                <h2>Adicionar usuário</h2>
+                <p className="muted">Crie um novo médico ou paciente diretamente na sua clínica.</p>
               </div>
             </div>
 
@@ -393,7 +393,7 @@ export default function ClinicDashboardPage() {
                     }))
                   }
                 >
-                  <option value="doctor">Medico</option>
+                  <option value="doctor">Médico</option>
                   <option value="patient">Paciente</option>
                 </select>
               </label>
@@ -422,7 +422,7 @@ export default function ClinicDashboardPage() {
               )}
 
               <button type="submit" className="doctor-action-button doctor-action-button-primary" disabled={creating}>
-                {creating ? "Cadastrando..." : "Adicionar usuario"}
+                {creating ? "Cadastrando..." : "Adicionar usuário"}
               </button>
 
               {createError && <p className="error">{createError}</p>}
@@ -432,31 +432,31 @@ export default function ClinicDashboardPage() {
           <section className="card doctor-record-card">
             <div className="doctor-record-header">
               <div>
-                <span className="doctor-section-label">Edicao</span>
-                <h2>{selectedUser ? `Editar ${selectedUser.name}` : "Selecione um usuario"}</h2>
-                <p className="muted">Atualize dados cadastrais e redefina a senha quando necessario.</p>
+                <span className="doctor-section-label">Edição</span>
+                <h2>{selectedUser ? `Editar ${selectedUser.name}` : "Selecione um usuário"}</h2>
+                <p className="muted">Atualize dados cadastrais e redefina a senha quando necessário.</p>
               </div>
             </div>
 
-            {!selectedUser && <p className="muted">Escolha um usuario na lista acima para editar.</p>}
+            {!selectedUser && <p className="muted">Escolha um usuário na lista acima para editar.</p>}
 
             {selectedUser && (
               <>
                 <div className="doctor-facts-grid">
                   <article className="doctor-fact-card">
                     <span className="doctor-fact-label">Perfil</span>
-                    <strong>{selectedUser.role === "doctor" ? "Medico" : "Paciente"}</strong>
+                    <strong>{selectedUser.role === "doctor" ? "Médico" : "Paciente"}</strong>
                     <small>Profile ID {selectedUser.id}</small>
                   </article>
                   <article className="doctor-fact-card">
-                    <span className="doctor-fact-label">Usuario</span>
+                    <span className="doctor-fact-label">Usuário</span>
                     <strong>{selectedUser.userId}</strong>
                     <small>{selectedUser.email}</small>
                   </article>
                   <article className="doctor-fact-card">
-                    <span className="doctor-fact-label">Clinica</span>
+                    <span className="doctor-fact-label">Clínica</span>
                     <strong>{selectedUser.clinicName}</strong>
-                    <small>Codigo {selectedUser.joinCode}</small>
+                    <small>Código {selectedUser.joinCode}</small>
                   </article>
                 </div>
 
@@ -512,7 +512,7 @@ export default function ClinicDashboardPage() {
                   </label>
 
                   <button type="submit" className="doctor-action-button doctor-action-button-secondary" disabled={saving}>
-                    {saving ? "Salvando..." : "Salvar alteracoes"}
+                    {saving ? "Salvando..." : "Salvar alterações"}
                   </button>
 
                   {editError && <p className="error">{editError}</p>}

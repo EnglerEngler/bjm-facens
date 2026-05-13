@@ -12,6 +12,8 @@ type LoginOutput = {
     role: string;
     email: string;
     clinicId?: string;
+    lgpdAccepted: boolean;
+    lgpdAcceptedAt?: string | null;
     onboardingCompleted: boolean;
     onboardingCompletedAt?: string | null;
   };
@@ -72,7 +74,7 @@ const bootstrapClinic = async (baseUrl: string, uniq: number) => {
     email: clinicAdminEmail,
     password,
     role: "clinic_admin",
-    clinicName: `Clinica Teste ${uniq}`,
+    clinicName: `Clínica Teste ${uniq}`,
   });
   assert.ok(clinicAdmin.clinicJoinCode);
 
@@ -142,11 +144,11 @@ test("routes: auth full flow (register/login/refresh/forgot/reset)", async () =>
   try {
     const uniq = Date.now();
     const clinicAdmin = await register(api.baseUrl, {
-      name: "Admin Clinica",
+      name: "Admin Clínica",
       email: `admin_clinica_${uniq}@bjm.local`,
       password: "123456",
       role: "clinic_admin",
-      clinicName: `Clinica Fluxo ${uniq}`,
+      clinicName: `Clínica Fluxo ${uniq}`,
     });
     assert.ok(clinicAdmin.clinicJoinCode);
 
@@ -162,6 +164,7 @@ test("routes: auth full flow (register/login/refresh/forgot/reset)", async () =>
     const loginOut = await login(api.baseUrl, email, "123456");
     assert.ok(loginOut.token.length > 20);
     assert.ok(loginOut.refreshToken.length > 20);
+    assert.equal(loginOut.user.lgpdAccepted, false);
 
     const refresh = await fetch(`${api.baseUrl}/auth/refresh`, {
       method: "POST",
@@ -188,7 +191,61 @@ test("routes: auth full flow (register/login/refresh/forgot/reset)", async () =>
 
     const loginAfterReset = await login(api.baseUrl, email, "654321");
     assert.equal(loginAfterReset.user.email, email);
+    assert.equal(loginAfterReset.user.lgpdAccepted, false);
     assert.equal(loginAfterReset.user.onboardingCompleted, false);
+  } finally {
+    await api.close();
+  }
+});
+
+test("routes: lgpd acceptance is persisted and not repeated for the user", async () => {
+  const api = await startServer();
+  try {
+    const uniq = Date.now();
+    const clinicAdmin = await register(api.baseUrl, {
+      name: "Admin Clínica LGPD",
+      email: `admin_lgpd_${uniq}@bjm.local`,
+      password: "123456",
+      role: "clinic_admin",
+      clinicName: `Clínica LGPD ${uniq}`,
+    });
+
+    const email = `lgpd_${uniq}@bjm.local`;
+    await register(api.baseUrl, {
+      name: "Usuário LGPD",
+      email,
+      password: "123456",
+      role: "doctor",
+      clinicJoinCode: clinicAdmin.clinicJoinCode,
+    });
+
+    const firstLogin = await login(api.baseUrl, email, "123456");
+    assert.equal(firstLogin.user.lgpdAccepted, false);
+    assert.equal(firstLogin.user.lgpdAcceptedAt, null);
+
+    const accept = await fetch(`${api.baseUrl}/auth/me/lgpd-acceptance`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${firstLogin.token}`,
+      },
+    });
+    assert.equal(accept.status, 200);
+    const acceptedUser = (await accept.json()) as LoginOutput["user"];
+    assert.equal(acceptedUser.lgpdAccepted, true);
+    assert.ok(acceptedUser.lgpdAcceptedAt);
+
+    const me = await fetch(`${api.baseUrl}/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${firstLogin.token}`,
+      },
+    });
+    assert.equal(me.status, 200);
+    const meBody = (await me.json()) as LoginOutput["user"];
+    assert.equal(meBody.lgpdAccepted, true);
+
+    const secondLogin = await login(api.baseUrl, email, "123456");
+    assert.equal(secondLogin.user.lgpdAccepted, true);
+    assert.ok(secondLogin.user.lgpdAcceptedAt);
   } finally {
     await api.close();
   }
@@ -299,10 +356,10 @@ test("routes: patients and records", async () => {
         answers: {
           main_complaint: "Dor de cabeca.",
           diagnosed_conditions: "Sim, hipertensao.",
-          smoking: "Nao",
+          smoking: "Não",
           height: "1,80",
           weight: "82",
-          male_urination_difficulty: "Nao",
+          male_urination_difficulty: "Não",
         }
       }),
     });
@@ -445,7 +502,7 @@ test("routes: ai prescription draft requires filled anamnesis", async () => {
 
     assert.equal(draft.status, 422);
     const body = await draft.json();
-    assert.equal(body.message, "Paciente ainda nao possui anamnese preenchida. Preencha a anamnese para gerar sugestao com IA.");
+    assert.equal(body.message, "Paciente ainda não possui anamnese preenchida. Preencha a anamnese para gerar sugestão com IA.");
   } finally {
     await api.close();
   }
@@ -456,11 +513,11 @@ test("routes: clinic admin can create and edit clinic users", async () => {
   try {
     const uniq = Date.now();
     const clinicAdmin = await register(api.baseUrl, {
-      name: "Admin Clinica Gestao",
+      name: "Admin Clínica Gestão",
       email: `clinic_manage_${uniq}@bjm.local`,
       password: "123456",
       role: "clinic_admin",
-      clinicName: `Clinica Gestao ${uniq}`,
+      clinicName: `Clínica Gestão ${uniq}`,
     });
     const clinicAdminSession = await login(api.baseUrl, `clinic_manage_${uniq}@bjm.local`, "123456");
 
@@ -471,7 +528,7 @@ test("routes: clinic admin can create and edit clinic users", async () => {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        name: "Medico Gestao",
+        name: "Médico Gestão",
         email: `doctor_manage_${uniq}@bjm.local`,
         password: "123456",
         role: "doctor",

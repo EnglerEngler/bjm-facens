@@ -46,7 +46,7 @@ export const loadPatientPrescriptions = async (): Promise<PatientPrescriptionRes
     if (!(error instanceof ApiError)) throw error;
     if ([403, 404].includes(error.status)) {
       throw new ApiError(
-        "Acesso negado para este perfil. O backend precisa liberar prescricoes do paciente.",
+        "Acesso negado para este perfil. O backend precisa liberar prescrições do paciente.",
         error.status,
         error.details,
       );

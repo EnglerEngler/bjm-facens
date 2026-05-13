@@ -22,7 +22,7 @@ export default function ClinicAuditPage() {
         const entries = await apiRequest<AuditLog[]>("/audit-logs?limit=100");
         setLogs(entries);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Falha ao carregar auditoria da clinica.");
+        setError(err instanceof Error ? err.message : "Falha ao carregar auditoria da clínica.");
       } finally {
         setLoading(false);
       }
@@ -45,9 +45,9 @@ export default function ClinicAuditPage() {
     <main className="doctor-dashboard audit-dashboard clinic-audit-dashboard">
       <section className="doctor-hero audit-dashboard-hero clinic-audit-hero">
         <div>
-          <span className="doctor-kicker">Auditoria da clinica</span>
-          <h1>Eventos vinculados a sua operacao</h1>
-          <p className="muted">Consulte os registros recentes da sua clinica para validar acessos, cadastros e alteracoes relevantes.</p>
+          <span className="doctor-kicker">Auditoria da clínica</span>
+          <h1>Eventos vinculados à sua operação</h1>
+          <p className="muted">Consulte os registros recentes da sua clínica para validar acessos, cadastros e alterações relevantes.</p>
         </div>
         <div className="doctor-hero-meta">
           <span>{metrics.total} evento(s) carregados</span>
@@ -59,8 +59,8 @@ export default function ClinicAuditPage() {
       <section className="doctor-search card">
         <div className="doctor-search-heading">
           <div>
-            <h2>Escopo da clinica</h2>
-            <p className="muted">Somente eventos pertencentes ao contexto da sua clinica dentro da janela atual de consulta.</p>
+            <h2>Escopo da clínica</h2>
+            <p className="muted">Somente eventos pertencentes ao contexto da sua clínica dentro da janela atual de consulta.</p>
           </div>
         </div>
 
@@ -73,19 +73,19 @@ export default function ClinicAuditPage() {
           <article className="doctor-fact-card">
             <span className="doctor-fact-label">Atores</span>
             <strong>{metrics.actors}</strong>
-            <small>Usuarios que interagiram no periodo</small>
+            <small>Usuários que interagiram no período</small>
           </article>
           <article className="doctor-fact-card">
             <span className="doctor-fact-label">Recursos</span>
             <strong>{metrics.resources}</strong>
-            <small>Objetos afetados pelas operacoes</small>
+            <small>Objetos afetados pelas operações</small>
           </article>
         </div>
       </section>
 
       {loading && <p>Carregando logs...</p>}
       {error && <p className="error">{error}</p>}
-      {!loading && !error && <AuditTable logs={logs} emptyMessage="Nenhum evento da sua clinica foi encontrado na consulta atual." />}
+      {!loading && !error && <AuditTable logs={logs} emptyMessage="Nenhum evento da sua clínica foi encontrado na consulta atual." />}
     </main>
   );
 }
