@@ -152,7 +152,7 @@ export interface AdminDashboardPerson {
   userId: string;
   name: string;
   email: string;
-  role: "doctor" | "patient";
+  role: "doctor" | "patient" | "clinic_admin";
 }
 
 export interface AdminDashboardPatient extends AdminDashboardPerson {
@@ -166,6 +166,7 @@ export interface AdminDashboardClinic {
   joinCode: string;
   doctors: AdminDashboardPerson[];
   patients: AdminDashboardPatient[];
+  clinicAdmins: AdminDashboardPerson[];
 }
 
 export interface ClinicManagedUser {
@@ -173,7 +174,7 @@ export interface ClinicManagedUser {
   userId: string;
   name: string;
   email: string;
-  role: "doctor" | "patient";
+  role: "doctor" | "patient" | "clinic_admin";
   cpf: string | null;
   birthDate: string | null;
 }

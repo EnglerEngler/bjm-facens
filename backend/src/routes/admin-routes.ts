@@ -1,8 +1,9 @@
+import { randomBytes } from "node:crypto";
 import { Router, type Request } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { sequelize } from "../db/sequelize.js";
-import { ClinicModel, DoctorModel, PatientModel, UserModel } from "../db/models/index.js";
+import { ClinicAdminModel, ClinicModel, DoctorModel, PatientModel, UserModel } from "../db/models/index.js";
 import { authMiddleware, requireRole } from "../middleware/auth-middleware.js";
 import { addAuditLog } from "../services/audit-service.js";
 import { createId } from "../utils/id.js";
@@ -14,6 +15,7 @@ type DashboardClinic = {
   joinCode: string;
   doctors: Array<{ id: string; userId: string; name: string; email: string; role: "doctor" }>;
   patients: Array<{ id: string; userId: string; name: string; email: string; role: "patient"; cpf: string | null; birthDate: string | null }>;
+  clinicAdmins: Array<{ id: string; userId: string; name: string; email: string; role: "clinic_admin" }>;
 };
 
 const normalizeCpf = (value: unknown) => (typeof value === "string" ? value.replace(/\D/g, "") : value);
@@ -23,7 +25,7 @@ const createClinicUserSchema = z
     name: z.string().trim().min(3),
     email: z.string().trim().email(),
     password: z.string().min(6),
-    role: z.enum(["doctor", "patient"]),
+    role: z.enum(["doctor", "patient", "clinic_admin"]),
     cpf: z.preprocess(normalizeCpf, z.string().regex(/^\d{11}$/).nullable()).optional(),
     birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   })
@@ -44,6 +46,13 @@ const createClinicUserSchema = z
       });
     }
   });
+
+const createClinicSchema = z.object({
+  clinicName: z.string().trim().min(3),
+  cnpj: z
+    .preprocess((value) => (typeof value === "string" ? value.replace(/\D/g, "") : value), z.string().regex(/^\d{14}$/).nullable())
+    .optional(),
+});
 
 const updateClinicUserSchema = z
   .object({
@@ -117,11 +126,16 @@ const isPatientOnboardingComplete = (patient: PatientModel) =>
       patient.emergencyContactPhone,
   );
 
-const serializeManagedUser = (user: UserModel, doctor: DoctorModel | null, patient: PatientModel | null) => {
+const serializeManagedUser = (
+  user: UserModel,
+  doctor: DoctorModel | null,
+  patient: PatientModel | null,
+  clinicAdmin: ClinicAdminModel | null,
+) => {
   const patientOnboardingCompleted = patient ? isPatientOnboardingComplete(patient) : null;
 
   return {
-    id: patient?.id ?? doctor!.id,
+    id: patient?.id ?? doctor?.id ?? clinicAdmin!.id,
     userId: user.id,
     name: user.name,
     email: user.email,
@@ -163,6 +177,11 @@ adminRoutes.get("/dashboard", async (req, res, next) => {
       include: [{ model: UserModel, as: "user", attributes: ["id", "name", "email", "clinicId"], required: false }],
       order: [["createdAt", "DESC"]],
     });
+    const clinicAdmins = await ClinicAdminModel.findAll({
+      where: isGlobalAdmin ? {} : { clinicId: clinicId! },
+      include: [{ model: UserModel, as: "user", attributes: ["id", "name", "email", "clinicId"], required: false }],
+      order: [["createdAt", "DESC"]],
+    });
 
     const patients = await PatientModel.findAll({
       where: isGlobalAdmin ? {} : { clinicId: clinicId! },
@@ -179,6 +198,7 @@ adminRoutes.get("/dashboard", async (req, res, next) => {
         joinCode: clinic.joinCode,
         doctors: [],
         patients: [],
+        clinicAdmins: [],
       });
     });
 
@@ -191,6 +211,7 @@ adminRoutes.get("/dashboard", async (req, res, next) => {
         joinCode: "-",
         doctors: [],
         patients: [],
+        clinicAdmins: [],
       };
       clinicMap.set(id, fallback);
       return fallback;
@@ -207,6 +228,20 @@ adminRoutes.get("/dashboard", async (req, res, next) => {
         name: doctorUser?.name ?? "Sem nome",
         email: doctorUser?.email ?? "Sem email",
         role: "doctor",
+      });
+    });
+
+    clinicAdmins.forEach((clinicAdmin) => {
+      const adminUser = clinicAdmin.get("user") as UserModel | undefined;
+      const scopedClinicId = clinicAdmin.clinicId ?? adminUser?.clinicId ?? null;
+      if (!scopedClinicId) return;
+      const clinic = ensureClinic(scopedClinicId);
+      clinic.clinicAdmins.push({
+        id: clinicAdmin.id,
+        userId: clinicAdmin.userId,
+        name: adminUser?.name ?? "Sem nome",
+        email: adminUser?.email ?? "Sem email",
+        role: "clinic_admin",
       });
     });
 
@@ -228,6 +263,48 @@ adminRoutes.get("/dashboard", async (req, res, next) => {
 
     const items = Array.from(clinicMap.values()).sort((a, b) => a.clinicName.localeCompare(b.clinicName));
     res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRoutes.post("/clinics", async (req, res, next) => {
+  try {
+    if (req.auth?.role !== "admin") {
+      throw new HttpError("Somente o admin global pode criar clínicas.", 403);
+    }
+
+    const payload = createClinicSchema.parse(req.body);
+
+    const existingClinic = await ClinicModel.findOne({
+      where: { name: payload.clinicName },
+    });
+    if (existingClinic) throw new HttpError("Já existe uma clínica com esse nome.", 409);
+
+    const clinic = await ClinicModel.create({
+      id: createId("clinic"),
+      name: payload.clinicName,
+      joinCode: `CL-${randomBytes(5).toString("hex").toUpperCase()}`,
+      cnpj: payload.cnpj ?? null,
+      createdAt: new Date(),
+    });
+
+    addAuditLog({
+      actorUserId: req.auth.userId,
+      action: "admin.clinic.create",
+      resource: "clinics",
+      resourceId: clinic.id,
+      ip: req.ip,
+      metadata: { clinicName: clinic.name },
+    });
+
+    res.status(201).json({
+      clinicId: clinic.id,
+      clinicName: clinic.name,
+      joinCode: clinic.joinCode,
+      cnpj: clinic.cnpj,
+      createdAt: clinic.createdAt.toISOString(),
+    });
   } catch (error) {
     next(error);
   }
@@ -274,6 +351,28 @@ adminRoutes.post("/users", async (req, res, next) => {
         );
 
         return { id: doctor.id, userId: user.id, name: user.name, email: user.email, role: "doctor" as const, cpf: null, birthDate: null };
+      }
+
+      if (payload.role === "clinic_admin") {
+        const clinicAdmin = await ClinicAdminModel.create(
+          {
+            id: createId("clinicadmin"),
+            userId: user.id,
+            clinicId,
+            createdAt: new Date(),
+          },
+          { transaction },
+        );
+
+        return {
+          id: clinicAdmin.id,
+          userId: user.id,
+          name: user.name,
+          email: user.email,
+          role: "clinic_admin" as const,
+          cpf: null,
+          birthDate: null,
+        };
       }
 
       const patient = await PatientModel.create(
@@ -323,8 +422,8 @@ adminRoutes.get("/users/:userId", async (req, res, next) => {
       where: { id: req.params.userId, clinicId },
     });
     if (!user) throw new HttpError("Usuário não encontrado nesta clínica.", 404);
-    if (user.role !== "doctor" && user.role !== "patient") {
-      throw new HttpError("Somente médico e paciente podem ser consultados nesta tela.", 403);
+    if (user.role !== "doctor" && user.role !== "patient" && user.role !== "clinic_admin") {
+      throw new HttpError("Somente médico, paciente e admin da clínica podem ser consultados nesta tela.", 403);
     }
 
     const patient = user.role === "patient" ? await PatientModel.findOne({ where: { userId: user.id, clinicId } }) : null;
@@ -332,8 +431,10 @@ adminRoutes.get("/users/:userId", async (req, res, next) => {
 
     const doctor = user.role === "doctor" ? await DoctorModel.findOne({ where: { userId: user.id, clinicId } }) : null;
     if (user.role === "doctor" && !doctor) throw new HttpError("Perfil de médico não encontrado.", 404);
+    const clinicAdmin = user.role === "clinic_admin" ? await ClinicAdminModel.findOne({ where: { userId: user.id, clinicId } }) : null;
+    if (user.role === "clinic_admin" && !clinicAdmin) throw new HttpError("Perfil de admin da clínica não encontrado.", 404);
 
-    res.json(serializeManagedUser(user, doctor, patient));
+    res.json(serializeManagedUser(user, doctor, patient, clinicAdmin));
   } catch (error) {
     next(error);
   }
@@ -348,8 +449,8 @@ adminRoutes.patch("/users/:userId", async (req, res, next) => {
       where: { id: req.params.userId, clinicId },
     });
     if (!user) throw new HttpError("Usuário não encontrado nesta clínica.", 404);
-    if (user.role !== "doctor" && user.role !== "patient") {
-      throw new HttpError("Somente médico e paciente podem ser editados nesta tela.", 403);
+    if (user.role !== "doctor" && user.role !== "patient" && user.role !== "clinic_admin") {
+      throw new HttpError("Somente médico, paciente e admin da clínica podem ser editados nesta tela.", 403);
     }
 
     if (payload.email && payload.email.toLowerCase() !== user.email) {
@@ -364,12 +465,14 @@ adminRoutes.patch("/users/:userId", async (req, res, next) => {
     }
     const doctor = user.role === "doctor" ? await DoctorModel.findOne({ where: { userId: user.id, clinicId } }) : null;
     if (user.role === "doctor" && !doctor) throw new HttpError("Perfil de médico não encontrado.", 404);
+    const clinicAdmin = user.role === "clinic_admin" ? await ClinicAdminModel.findOne({ where: { userId: user.id, clinicId } }) : null;
+    if (user.role === "clinic_admin" && !clinicAdmin) throw new HttpError("Perfil de admin da clínica não encontrado.", 404);
 
-    if (user.role === "doctor" && payload.birthDate !== undefined) {
+    if ((user.role === "doctor" || user.role === "clinic_admin") && payload.birthDate !== undefined) {
       throw new HttpError("Nascimento só pode ser alterado para pacientes.", 422);
     }
     if (
-      user.role === "doctor" &&
+      (user.role === "doctor" || user.role === "clinic_admin") &&
       (payload.cpf !== undefined ||
         payload.biologicalSex !== undefined ||
         payload.phone !== undefined ||
@@ -421,7 +524,7 @@ adminRoutes.patch("/users/:userId", async (req, res, next) => {
       metadata: { clinicId, role: user.role },
     });
 
-    res.json(serializeManagedUser(user, doctor, patient));
+    res.json(serializeManagedUser(user, doctor, patient, clinicAdmin));
   } catch (error) {
     next(error);
   }

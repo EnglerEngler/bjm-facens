@@ -16,6 +16,21 @@ type ManagedAdminUser = ClinicManagedUser & {
 
 type AdminEntityFilter = "clinics" | "doctors" | "patients" | null;
 
+type CreateAdminUserFormState = {
+  clinicId: string;
+  name: string;
+  email: string;
+  password: string;
+  role: "doctor" | "patient" | "clinic_admin";
+  cpf: string;
+  birthDate: string;
+};
+
+type CreateClinicFormState = {
+  clinicName: string;
+  cnpj: string;
+};
+
 type PatientProfileFormState = {
   cpf: string;
   birthDate: string;
@@ -67,6 +82,21 @@ const emptyEditForm: AdminEditFormState = {
   emergencyContactPhone: "",
 };
 
+const emptyCreateForm: CreateAdminUserFormState = {
+  clinicId: "",
+  name: "",
+  email: "",
+  password: "",
+  role: "doctor",
+  cpf: "",
+  birthDate: "",
+};
+
+const emptyCreateClinicForm: CreateClinicFormState = {
+  clinicName: "",
+  cnpj: "",
+};
+
 const toEditFormState = (user: AdminManagedUserDetail): AdminEditFormState => ({
   name: user.name,
   email: user.email,
@@ -104,11 +134,20 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [loadingSelectedUser, setLoadingSelectedUser] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createClinicError, setCreateClinicError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [creatingClinic, setCreatingClinic] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [clinicSearch, setClinicSearch] = useState("");
+  const [isCreateClinicModalOpen, setIsCreateClinicModalOpen] = useState(false);
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
   const [selectedUserDetail, setSelectedUserDetail] = useState<AdminManagedUserDetail | null>(null);
   const [editForm, setEditForm] = useState<AdminEditFormState>(emptyEditForm);
+  const [createForm, setCreateForm] = useState<CreateAdminUserFormState>(emptyCreateForm);
+  const [createClinicForm, setCreateClinicForm] = useState<CreateClinicFormState>(emptyCreateClinicForm);
 
   useEffect(() => {
     const run = async () => {
@@ -116,6 +155,10 @@ export default function AdminDashboardPage() {
         setLoading(true);
         const payload = await apiRequest<AdminDashboardClinic[]>("/admin/dashboard");
         setClinics(payload);
+        setCreateForm((current) => ({
+          ...current,
+          clinicId: current.clinicId || payload[0]?.clinicId || "",
+        }));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Falha ao carregar dashboard administrativo.");
       } finally {
@@ -139,6 +182,14 @@ export default function AdminDashboardPage() {
         })),
         ...clinic.patients.map((patient) => ({
           ...patient,
+          clinicId: clinic.clinicId,
+          clinicName: clinic.clinicName,
+          joinCode: clinic.joinCode,
+        })),
+        ...clinic.clinicAdmins.map((clinicAdmin) => ({
+          ...clinicAdmin,
+          cpf: null,
+          birthDate: null,
           clinicId: clinic.clinicId,
           clinicName: clinic.clinicName,
           joinCode: clinic.joinCode,
@@ -225,10 +276,13 @@ export default function AdminDashboardPage() {
             const patients = clinic.patients.filter((patient) =>
               matchesSearch(query, patient.name, patient.email, patient.userId, patient.id, patient.cpf ?? "", patient.birthDate ?? ""),
             );
+            const clinicAdmins = clinic.clinicAdmins.filter((clinicAdmin) =>
+              matchesSearch(query, clinicAdmin.name, clinicAdmin.email, clinicAdmin.userId, clinicAdmin.id),
+            );
             const clinicMatch = matchesSearch(query, clinic.clinicName, clinic.joinCode, clinic.clinicId);
 
             if (clinicMatch) return clinic;
-            if (doctors.length || patients.length) return { ...clinic, doctors, patients };
+            if (doctors.length || patients.length || clinicAdmins.length) return { ...clinic, doctors, patients, clinicAdmins };
             return null;
           })
           .filter((item): item is AdminDashboardClinic => item !== null);
@@ -249,12 +303,18 @@ export default function AdminDashboardPage() {
   }, [activeFilter, clinics, query]);
 
   const selectedClinic = filteredClinics.find((clinic) => clinic.clinicId === selectedClinicId) ?? null;
+  const selectedCreateClinic = clinics.find((clinic) => clinic.clinicId === createForm.clinicId) ?? null;
+  const clinicSearchResults = useMemo(() => {
+    if (!clinicSearch.trim()) return clinics;
+    return clinics.filter((clinic) => matchesSearch(clinicSearch, clinic.clinicName, clinic.joinCode, clinic.clinicId));
+  }, [clinicSearch, clinics]);
 
   const totals = useMemo(
     () => ({
       clinics: clinics.length,
       doctors: clinics.reduce((acc, item) => acc + item.doctors.length, 0),
       patients: clinics.reduce((acc, item) => acc + item.patients.length, 0),
+      clinicAdmins: clinics.reduce((acc, item) => acc + item.clinicAdmins.length, 0),
     }),
     [clinics],
   );
@@ -266,6 +326,7 @@ export default function AdminDashboardPage() {
 
         const doctors = clinic.doctors.filter((doctor) => doctor.userId !== nextUser.userId);
         const patients = clinic.patients.filter((patient) => patient.userId !== nextUser.userId);
+        const clinicAdmins = clinic.clinicAdmins.filter((clinicAdmin) => clinicAdmin.userId !== nextUser.userId);
 
         if (nextUser.role === "doctor") {
           doctors.unshift({
@@ -275,7 +336,7 @@ export default function AdminDashboardPage() {
             email: nextUser.email,
             role: "doctor",
           });
-        } else {
+        } else if (nextUser.role === "patient") {
           patients.unshift({
             id: nextUser.id,
             userId: nextUser.userId,
@@ -285,11 +346,101 @@ export default function AdminDashboardPage() {
             cpf: nextUser.cpf,
             birthDate: nextUser.birthDate,
           });
+        } else {
+          clinicAdmins.unshift({
+            id: nextUser.id,
+            userId: nextUser.userId,
+            name: nextUser.name,
+            email: nextUser.email,
+            role: "clinic_admin",
+          });
         }
 
-        return { ...clinic, doctors, patients };
+        return { ...clinic, doctors, patients, clinicAdmins };
       }),
     );
+  };
+
+  const handleCreateUser = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCreateError(null);
+    setFeedback(null);
+
+    try {
+      setCreating(true);
+      const created = await apiRequest<ClinicManagedUser>("/admin/users", {
+        method: "POST",
+        body: JSON.stringify({
+          clinicId: createForm.clinicId,
+          name: createForm.name,
+          email: createForm.email,
+          password: createForm.password,
+          role: createForm.role,
+          cpf: createForm.role === "patient" ? digitsOnly(createForm.cpf) || null : undefined,
+          birthDate: createForm.role === "patient" ? createForm.birthDate || null : undefined,
+        }),
+      });
+
+      upsertManagedUser(created, createForm.clinicId);
+      setCreateForm((current) => ({
+        ...emptyCreateForm,
+        clinicId: current.clinicId,
+      }));
+      setSelectedClinicId(null);
+      setSelectedUserId(created.userId);
+      setFeedback(
+        created.role === "doctor"
+          ? "Médico cadastrado com sucesso."
+          : created.role === "patient"
+            ? "Paciente cadastrado com sucesso."
+            : "Admin da clínica cadastrado com sucesso.",
+      );
+      setIsCreateUserModalOpen(false);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Falha ao cadastrar usuário.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCreateClinic = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCreateClinicError(null);
+    setFeedback(null);
+
+    try {
+      setCreatingClinic(true);
+      const created = await apiRequest<{
+        clinicId: string;
+        clinicName: string;
+        joinCode: string;
+        cnpj?: string | null;
+        createdAt: string;
+      }>("/admin/clinics", {
+        method: "POST",
+        body: JSON.stringify({
+          clinicName: createClinicForm.clinicName,
+          cnpj: digitsOnly(createClinicForm.cnpj) || null,
+        }),
+      });
+
+      setClinics((current) =>
+        [...current, { clinicId: created.clinicId, clinicName: created.clinicName, joinCode: created.joinCode, doctors: [], patients: [], clinicAdmins: [] }].sort(
+          (left, right) => left.clinicName.localeCompare(right.clinicName),
+        ),
+      );
+      setCreateClinicForm(emptyCreateClinicForm);
+      setCreateForm((current) => ({ ...current, clinicId: created.clinicId }));
+      setClinicSearch(created.clinicName);
+      setSelectedClinicId(created.clinicId);
+      setSelectedUserId(null);
+      setFeedback("Clínica cadastrada com sucesso.");
+      setIsCreateClinicModalOpen(false);
+    } catch (err) {
+      setCreateClinicError(err instanceof Error ? err.message : "Falha ao cadastrar clínica.");
+    } finally {
+      setCreatingClinic(false);
+    }
   };
 
   const setProfileField = <K extends keyof PatientProfileFormState>(field: K, value: PatientProfileFormState[K]) => {
@@ -441,6 +592,11 @@ export default function AdminDashboardPage() {
             <strong>{totals.patients}</strong>
             <small>Cadastros acompanhados pelas clínicas</small>
           </button>
+          <div className="doctor-fact-card">
+            <span className="doctor-fact-label">Admins de Clínica</span>
+            <strong>{totals.clinicAdmins}</strong>
+            <small>Contas gestoras vinculadas</small>
+          </div>
         </div>
 
         <label htmlFor="admin-search" className="sr-only">
@@ -475,7 +631,7 @@ export default function AdminDashboardPage() {
                   </span>
                   <span className="muted">Código de entrada {clinic.joinCode}</span>
                   <span className="doctor-patient-card-meta">
-                    ID {clinic.clinicId} · {clinic.doctors.length} médico(s) · {clinic.patients.length} paciente(s)
+                    ID {clinic.clinicId} · {clinic.doctors.length} médico(s) · {clinic.patients.length} paciente(s) · {clinic.clinicAdmins.length} admin(s)
                   </span>
                 </button>
               ))}
@@ -493,11 +649,16 @@ export default function AdminDashboardPage() {
                 >
                   <span className="doctor-patient-card-top">
                     <strong>{user.name}</strong>
-                    <span>{user.role === "doctor" ? "Médico" : formatDate(user.birthDate)}</span>
+                    <span>{user.role === "doctor" ? "Médico" : user.role === "clinic_admin" ? "Admin da Clínica" : formatDate(user.birthDate)}</span>
                   </span>
                   <span className="muted">{user.email}</span>
                   <span className="doctor-patient-card-meta">
-                    {user.role === "doctor" ? "Perfil médico" : `Perfil paciente · CPF ${user.cpf ? formatCpf(user.cpf) : "pendente"}`} · {user.clinicName}
+                    {user.role === "doctor"
+                      ? "Perfil médico"
+                      : user.role === "clinic_admin"
+                        ? "Perfil admin da clínica"
+                        : `Perfil paciente · CPF ${user.cpf ? formatCpf(user.cpf) : "pendente"}`}{" "}
+                    · {user.clinicName}
                   </span>
                 </button>
               );
@@ -521,6 +682,39 @@ export default function AdminDashboardPage() {
       <section className="doctor-record-shell">
         <div className="doctor-record-main admin-management-grid">
           <section className="admin-editor-card">
+            <section className="card doctor-record-card">
+              <div className="doctor-record-header">
+                <div>
+                  <span className="doctor-section-label">Cadastro</span>
+                  <h2>Ações de cadastro</h2>
+                  <p className="muted">Abra o pop-up de criação para cadastrar clínica ou usuário sem sair do dashboard.</p>
+                </div>
+              </div>
+
+              <div className="patient-onboarding-actions patient-profile-actions">
+                <button
+                  type="button"
+                  className="doctor-action-button doctor-action-button-primary"
+                  onClick={() => {
+                    setCreateClinicError(null);
+                    setIsCreateClinicModalOpen(true);
+                  }}
+                >
+                  Nova clínica
+                </button>
+                <button
+                  type="button"
+                  className="doctor-action-button"
+                  onClick={() => {
+                    setCreateError(null);
+                    setIsCreateUserModalOpen(true);
+                  }}
+                >
+                  Novo usuário
+                </button>
+              </div>
+            </section>
+
             <div className="doctor-record-header">
               <div>
                 <span className="doctor-section-label">Edição</span>
@@ -585,6 +779,11 @@ export default function AdminDashboardPage() {
                       <strong>{selectedClinic.patients.length}</strong>
                       <small>Cadastros acompanhados por esta clínica</small>
                     </article>
+                    <article className="doctor-fact-card">
+                      <span className="doctor-fact-label">Admins da Clínica</span>
+                      <strong>{selectedClinic.clinicAdmins.length}</strong>
+                      <small>Responsáveis vinculados a esta clínica</small>
+                    </article>
                   </div>
                 </section>
               </section>
@@ -633,7 +832,9 @@ export default function AdminDashboardPage() {
                       <p className="muted">
                         {selectedUser.role === "patient"
                           ? "O admin pode revisar e editar todos os dados cadastrais do paciente nesta tela."
-                          : "O admin pode ajustar acesso e dados básicos do médico nesta tela."}
+                          : selectedUser.role === "clinic_admin"
+                            ? "O admin pode ajustar os dados de acesso do admin da clínica nesta tela."
+                            : "O admin pode ajustar acesso e dados básicos do médico nesta tela."}
                       </p>
                     </div>
                   </div>
@@ -643,7 +844,13 @@ export default function AdminDashboardPage() {
                     <div className="doctor-facts-grid">
                       <article className="doctor-fact-card">
                         <span className="doctor-fact-label">Tipo de perfil</span>
-                        <strong>{selectedUser.role === "doctor" ? "Médico" : "Paciente"}</strong>
+                        <strong>
+                          {selectedUser.role === "doctor"
+                            ? "Médico"
+                            : selectedUser.role === "clinic_admin"
+                              ? "Admin da Clínica"
+                              : "Paciente"}
+                        </strong>
                         <small>Profile ID {selectedUser.id}</small>
                       </article>
                       <article className="doctor-fact-card">
@@ -808,6 +1015,207 @@ export default function AdminDashboardPage() {
           </section>
         </div>
       </section>
+
+      {isCreateClinicModalOpen && (
+        <div className="confirm-save-dialog" role="dialog" aria-modal="true" aria-labelledby="create-clinic-title">
+          <div className="confirm-save-card admin-create-modal">
+            <div className="doctor-record-header">
+              <div>
+                <span className="doctor-section-label">Cadastro</span>
+                <h2 id="create-clinic-title">Criar clínica</h2>
+                <p className="muted">Cadastre uma nova clínica e deixe a unidade disponível para futuros vínculos.</p>
+              </div>
+            </div>
+
+            <form className="patient-onboarding-form" onSubmit={handleCreateClinic}>
+              <div className="patient-onboarding-grid">
+                <label>
+                  Nome da clínica
+                  <input
+                    value={createClinicForm.clinicName}
+                    onChange={(event) => setCreateClinicForm((current) => ({ ...current, clinicName: event.target.value }))}
+                    required
+                  />
+                </label>
+
+                <label>
+                  CNPJ
+                  <input
+                    value={createClinicForm.cnpj}
+                    onChange={(event) => setCreateClinicForm((current) => ({ ...current, cnpj: digitsOnly(event.target.value).slice(0, 14) }))}
+                    placeholder="Somente números"
+                    inputMode="numeric"
+                    maxLength={14}
+                  />
+                </label>
+              </div>
+
+              <div className="patient-onboarding-actions patient-profile-actions">
+                <button type="button" className="doctor-action-button" onClick={() => setIsCreateClinicModalOpen(false)} disabled={creatingClinic}>
+                  Cancelar
+                </button>
+                <button type="submit" className="doctor-action-button doctor-action-button-primary" disabled={creatingClinic}>
+                  {creatingClinic ? "Cadastrando..." : "Criar clínica"}
+                </button>
+              </div>
+
+              {createClinicError && <p className="error">{createClinicError}</p>}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isCreateUserModalOpen && (
+        <div className="confirm-save-dialog" role="dialog" aria-modal="true" aria-labelledby="create-user-title">
+          <div className="confirm-save-card admin-create-modal admin-create-modal-wide">
+            <div className="doctor-record-header">
+              <div>
+                <span className="doctor-section-label">Cadastro</span>
+                <h2 id="create-user-title">Criar usuário</h2>
+                <p className="muted">Crie médico, paciente ou admin da clínica e vincule pela busca de clínica.</p>
+              </div>
+            </div>
+
+            <form className="patient-onboarding-form" onSubmit={handleCreateUser}>
+              <div className="patient-onboarding-grid">
+                <label>
+                  Perfil
+                  <select
+                    value={createForm.role}
+                    onChange={(event) =>
+                      setCreateForm((current) => ({
+                        ...current,
+                        role: event.target.value as CreateAdminUserFormState["role"],
+                        cpf: event.target.value === "patient" ? current.cpf : "",
+                        birthDate: event.target.value === "patient" ? current.birthDate : "",
+                      }))
+                    }
+                    required
+                  >
+                    <option value="doctor">Médico</option>
+                    <option value="patient">Paciente</option>
+                    <option value="clinic_admin">Admin da Clínica</option>
+                  </select>
+                </label>
+
+                <label>
+                  Nome
+                  <input
+                    value={createForm.name}
+                    onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))}
+                    required
+                  />
+                </label>
+
+                <label>
+                  E-mail
+                  <input
+                    type="email"
+                    value={createForm.email}
+                    onChange={(event) => setCreateForm((current) => ({ ...current, email: event.target.value }))}
+                    required
+                  />
+                </label>
+
+                <label>
+                  Senha inicial
+                  <input
+                    type="password"
+                    value={createForm.password}
+                    onChange={(event) => setCreateForm((current) => ({ ...current, password: event.target.value }))}
+                    required
+                  />
+                </label>
+
+                {createForm.role === "patient" && (
+                  <>
+                    <label>
+                      CPF
+                      <input
+                        value={createForm.cpf}
+                        onChange={(event) => setCreateForm((current) => ({ ...current, cpf: formatCpf(event.target.value) }))}
+                        placeholder="000.000.000-00"
+                        inputMode="numeric"
+                        maxLength={14}
+                        required
+                      />
+                    </label>
+                    <label>
+                      Data de nascimento
+                      <input
+                        type="date"
+                        value={createForm.birthDate}
+                        onChange={(event) => setCreateForm((current) => ({ ...current, birthDate: event.target.value }))}
+                        required
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+
+              <div className="doctor-record-card admin-create-clinic-picker">
+                <div className="doctor-record-header">
+                  <div>
+                    <span className="doctor-section-label">Clínica</span>
+                    <h3>Buscar e vincular</h3>
+                    <p className="muted">Escolha a clínica digitando nome, código de entrada ou ID. Sem dropdown.</p>
+                  </div>
+                </div>
+
+                <label>
+                  Buscar clínica
+                  <input
+                    value={clinicSearch}
+                    onChange={(event) => setClinicSearch(event.target.value)}
+                    placeholder="Ex.: Clínica Central, CL-AB12CD34EF ou clinic_123"
+                  />
+                </label>
+
+                {selectedCreateClinic && (
+                  <p className="muted" style={{ marginTop: "0.75rem" }}>
+                    Clínica selecionada: <strong>{selectedCreateClinic.clinicName}</strong> · {selectedCreateClinic.joinCode}
+                  </p>
+                )}
+
+                <div className="doctor-search-results" style={{ marginTop: "1rem" }}>
+                  {clinicSearchResults.slice(0, 8).map((clinic) => (
+                    <button
+                      key={clinic.clinicId}
+                      type="button"
+                      className={`doctor-patient-card${clinic.clinicId === createForm.clinicId ? " doctor-patient-card-active" : ""}`}
+                      onClick={() => {
+                        setCreateForm((current) => ({ ...current, clinicId: clinic.clinicId }));
+                        setClinicSearch(clinic.clinicName);
+                      }}
+                    >
+                      <span className="doctor-patient-card-top">
+                        <strong>{clinic.clinicName}</strong>
+                        <span>Clínica</span>
+                      </span>
+                      <span className="muted">Código de entrada {clinic.joinCode}</span>
+                      <span className="doctor-patient-card-meta">
+                        ID {clinic.clinicId} · {clinic.doctors.length} médico(s) · {clinic.patients.length} paciente(s) · {clinic.clinicAdmins.length} admin(s)
+                      </span>
+                    </button>
+                  ))}
+                  {clinicSearchResults.length === 0 && <p className="muted">Nenhuma clínica encontrada para essa busca.</p>}
+                </div>
+              </div>
+
+              <div className="patient-onboarding-actions patient-profile-actions">
+                <button type="button" className="doctor-action-button" onClick={() => setIsCreateUserModalOpen(false)} disabled={creating}>
+                  Cancelar
+                </button>
+                <button type="submit" className="doctor-action-button doctor-action-button-primary" disabled={creating || !createForm.clinicId}>
+                  {creating ? "Cadastrando..." : "Criar usuário"}
+                </button>
+              </div>
+
+              {createError && <p className="error">{createError}</p>}
+            </form>
+          </div>
+        </div>
+      )}
 
     </main>
   );

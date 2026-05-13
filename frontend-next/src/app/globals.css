@@ -702,6 +702,20 @@ td {
   box-shadow: 0 28px 60px rgba(15, 23, 42, 0.26);
 }
 
+.admin-create-modal {
+  width: min(100%, 720px);
+  max-height: min(88vh, 920px);
+  overflow-y: auto;
+}
+
+.admin-create-modal-wide {
+  width: min(100%, 920px);
+}
+
+.admin-create-clinic-picker {
+  margin-top: 16px;
+}
+
 .confirm-save-card h4 {
   margin: 0 0 8px;
 }
